@@ -5,12 +5,25 @@ destroying it. Some sellers rebadge this scope as **SiRyder**; searches should
 include that name and the closely related **1013D**, which shares most of its
 design.
 
+**Status: done, 2026-09-04.** The owner's scope runs a full-screen 800 × 480
+splash from a relocated block at `0x100000` with a two-word SPL patch, verified
+by full-chip read-back, calibration untouched. The FEL stub is cleared and it
+boots on its own. This file is now a record of what was measured on that
+hardware, not a plan — read the **Verified vs assumed** section before treating
+anything here as still open.
+
 Public repo at `github.com/xecaz/FNIRSI-1014D`. No build step, no dependencies
 beyond Pillow + NumPy.
 
-**The repo is public.** Nothing personal, and no flash dumps, go in it: dumps
-carry per-unit calibration, and the owner's splash artwork is their own. Both
-are covered by `.gitignore` — check it before adding files.
+**The repo is public.** No flash dumps go in it — they carry per-unit
+calibration and are specific to one physical scope. `.gitignore` covers `*.bin`,
+`backup-*/`, `work/` and `upstream/`; check it before adding files.
+
+Artwork is the owner's call, made once and already made: `new.jonash3.png` (the
+installed 800 × 480 splash, eyes pixelated) **is committed and public**, at the
+owner's explicit instruction after being told git history is permanent.
+`ossiloscope.jpg` — the earlier, unpixelated 298 × 98 artwork — stays ignored,
+and nothing derived from it belongs in the repo or in a published page.
 
 ## Hardware
 
@@ -203,16 +216,26 @@ fnirsi_splash.py    info / extract / replace on a flash dump. Parses geometry
 backup-scope.sh     Read-only. Double-reads the chip, compares, hashes, splits
                     out calibration, runs info + extract. Run this first.
                     Needs sudo for the FEL `version` call as well as the reads.
-bench-guide.html    The bench procedure, published as an artifact. Its step 1
-                    still describes an external microSD; the 1014D has none.
-work/               Scratch: extracted splashes, patched images, comparisons.
-                    Git-ignored, which currently includes the two builders below.
-  build-sd-wipe.py    Payload that erases the FEL stub from the internal card.
-  build-bigsplash.py  Full-screen 800 × 480 bitmap + the two-word SPL patch.
+build-sd-wipe.py    Builds the payload that erases the FEL stub from the
+                    internal card — the way out of the trap in the section
+                    above. Takes [bootloader] [output]. Read it before you run
+                    it; it assembles ~100 bytes of ARM into someone else's
+                    binary.
+build-bigsplash.py  Builds the full-screen 800 × 480 bitmap block plus the
+                    two-word SPL patch. Takes [flash-image] [picture] [output].
+                    Refuses to patch an SPL that does not contain the expected
+                    instruction and literal.
+bench-guide.html    The bench procedure, published as an artifact at
+                    claude.ai/code/artifact/b8cea1db-78ab-450f-9b65-539814713cc1
+                    Rewritten from hardware; update it there, not by publishing
+                    a new one.
+index.html          The narrative writeup, "8 KiB from a brick". Self-contained
+                    — the owner's site CSS inlined, both splash renders as data
+                    URIs, no external requests. Keep it that way.
+work/               Scratch: dumps, patched images, comparisons. Git-ignored.
 upstream/           Vendored copies of pecostm32's repos (see below).
-ossiloscope.jpg     Owner's artwork, git-ignored. 298 × 98 — note that a v3.0
-                    scope's slot is 298 × 130, so it needs --stretch or a
-                    letterbox.
+ossiloscope.jpg     Earlier artwork, git-ignored. 298 × 98 — a v3.0 scope's slot
+                    is 298 × 130, so it needs --stretch or a letterbox.
 ```
 
 Typical use:
@@ -279,8 +302,18 @@ Still not verified:
 - Say what is measured and what is inferred. This project has already had one
   wrong assumption (4 MiB) carried into a published document; the fix was
   checking against a real dump rather than reasoning harder.
-- The owner's splash artwork is personal and is deliberately kept out of this
-  repo (see `.gitignore`). Whatever goes in the splash shows on every power-on,
-  so it is more public than a wallpaper — worth a mention, not a lecture.
+- Whatever goes in the splash shows on every power-on, so it is more public
+  than a wallpaper — worth a mention, not a lecture. That mention was made, the
+  owner decided, and the decision is recorded at the top of this file. Do not
+  re-litigate it.
 - `var()` does not work in SVG presentation attributes. In `bench-guide.html`
   every SVG fill and stroke comes from a CSS class for this reason.
+- The owner runs every privileged command themselves, in their own terminal:
+  `sudo` cannot prompt through Claude Code's `!` prefix. Hand over **one-line**
+  commands — `\` continuations get mangled on paste — and say what output means
+  success, because you will not see it unless they paste it back.
+- `index.html` borrows the CSS from the owner's site verbatim. When editing it,
+  reuse the existing class vocabulary (`.ev`, `.dead`, `.tag ok|inf|bad`,
+  `.pull`, `.compare`, `.shot-label`) rather than adding classes, and watch
+  specificity — `.shot figcaption` beats `.shot-label`, which is why the
+  before/after labels are `div`s.
