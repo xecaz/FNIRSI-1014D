@@ -303,14 +303,15 @@ hr.rule{border:none;border-top:1px solid var(--rule);margin:44px 0 0}
       <p class="eyebrow">Bench procedure · Allwinner F1C100s · 2 MiB SPI NOR</p>
       <h1>FNIRSI 1014D<br>Splash Swap</h1>
       <p class="standfirst">Replacing the boot logo in SPI flash without losing the one thing on this
-      scope that cannot be replaced.</p>
+      scope that cannot be replaced. Now written from a scope that was actually opened up over USB,
+      not from dumps.</p>
     </div>
     <div class="idplate">
       SoC &nbsp;<b>Allwinner F1C100s</b><br>
       FPGA&nbsp;<b>Anlogic EF2L45LG144</b><br>
       Flash&nbsp;<b>2 MiB SPI NOR · W25Q16 class</b><br>
-      Splash&nbsp;<b>eGON.BMP @ 0x13000 · 298 × 98</b><br>
-      Format&nbsp;<b>RGB565 LE, uncompressed</b>
+      Splash&nbsp;<b>eGON.BMP @ 0x13000 · size varies</b><br>
+      Panel&nbsp;<b>800 × 480 · RGB565 LE</b>
     </div>
   </div>
 </header>
@@ -321,127 +322,134 @@ hr.rule{border:none;border-top:1px solid var(--rule);margin:44px 0 0}
 
   <div class="note stop">
     <span class="tag">Stop — unrecoverable</span>
-    <p>Your scope's per-unit calibration and configuration lives at flash offset
-    <code>0x1FD000</code>. It is written at the factory against <em>your</em> analog front end.
-    There is no download for it and no way to regenerate it at home.</p>
-    <p>This was verified, not assumed: two genuine 4 MiB dumps from different scopes are
-    byte-identical across the entire chip <em>except</em> two 4 KiB pages, both inside that
-    region. Somebody else's dump is not a spare copy of yours.</p>
+    <p>Your scope's per-unit calibration lives at flash offset <code>0x1FD000</code>. It is written
+    at the factory against <em>your</em> analog front end. There is no download for it and no way to
+    regenerate it at home. Somebody else's dump is not a spare copy of yours.</p>
   </div>
 
-  <p>Everything else on the chip is recoverable, because everything else is the same on every
-  unit. So the whole procedure below reduces to one rule: <strong>get a verified full-chip
-  backup before the first write</strong>, and the worst case stops being a brick and starts
-  being an inconvenience.</p>
+  <p>Everything else on the chip is recoverable, because everything else is the same on every unit
+  with the same firmware. So the whole procedure below reduces to one rule: <strong>get a verified
+  full-chip backup before the first write</strong>, and the worst case stops being a brick and
+  starts being an inconvenience.</p>
+
+  <div class="note warn">
+    <span class="tag">Measured, and mildly surprising</span>
+    <p>That region is calibration <em>and live configuration</em>. The firmware rewrites part of it
+    during ordinary use — on the bench, <code>0x1FD014</code> went <code>0x04</code> →
+    <code>0x03</code> across one normal boot with nothing written by us.</p>
+    <p>So two dumps of your <em>own</em> scope will differ there. A one-byte diff at
+    <code>0x1FD0xx</code> after a power cycle is the scope saving a setting, not evidence of a stray
+    write. Know that before it scares you.</p>
+  </div>
 </section>
 
 <section id="map">
   <h2><span class="num">01</span>What's on the chip</h2>
-  <p class="lede">Four Allwinner eGON blocks near the start, calibration near the end, and a
-  surprising amount of nothing in between.</p>
+  <p class="lede">Four Allwinner eGON blocks near the start, calibration in the last few kilobytes,
+  and about a megabyte of nothing in between — which turns out to be useful.</p>
 
   <figure class="bleed">
-    <p class="figtitle">Fig. 1 — the 1014D's 2 MiB address space, drawn to scale</p>
-    <svg viewBox="0 0 1000 300" role="img" aria-label="Map of the 1014D's 2 MiB flash showing four eGON blocks in the first 0.9 MiB, roughly 1.1 MiB of free space, and the calibration region in the last few kilobytes of the chip.">
-      <!-- ===== upper strip: full 2 MiB ===== -->
+    <p class="figtitle">Fig. 1 — a 1014D running firmware v3.0, drawn to scale</p>
+    <svg viewBox="0 0 1000 300" role="img" aria-label="Map of a 2 MiB 1014D flash: four eGON blocks in the first 0.9 MiB, a relocated full-screen bitmap at 0x100000, and calibration in the last few kilobytes.">
       <text class="s-ink3" x="0" y="16" font-size="12" letter-spacing="1.4">FULL CHIP · 2 MiB</text>
 
-      <!-- base track -->
       <rect class="s-track" x="0" y="34" width="1000" height="34"/>
 
-      <!-- blocks (min 4px so the small ones stay visible) -->
       <rect class="blk"      x="0"     y="34" width="6.4"   height="34"/>
       <rect class="blk"      x="11.7"  y="34" width="22.7"  height="34"/>
-      <rect class="s-accb"   x="37.1"  y="34" width="28.1"  height="34"/>
-      <rect class="blk-soft" x="76.2"  y="34" width="367.7" height="34"/>
+      <rect class="s-accb"   x="37.1"  y="34" width="37.1"  height="34"/>
+      <rect class="blk-soft" x="76.2"  y="34" width="368.9" height="34"/>
+      <rect class="s-accb"   x="500"   y="34" width="367.2" height="34"/>
       <rect class="s-dan"    x="994.1" y="34" width="5.9"   height="34"/>
 
-      <!-- labels for the big two -->
-      <text class="on-dark" x="260" y="56" text-anchor="middle" font-size="12">2nd executable — scope app · 753 KiB</text>
-      <text class="s-ink3"  x="715" y="56" text-anchor="middle" font-size="12">free space · 1.10 MiB unused</text>
+      <text class="on-dark"   x="260" y="56" text-anchor="middle" font-size="12">2nd executable — scope app · 755 KiB</text>
+      <text class="on-bright" x="683" y="56" text-anchor="middle" font-size="12">relocated 800 × 480 splash · 752 KiB</text>
 
-      <!-- leader to calibration, which now sits at the very end of the chip -->
       <path class="ln ln-dan" d="M997 34 L997 22"/>
       <text class="s-dan" x="991" y="20" font-size="12" text-anchor="end">0x1FD000 · calibration — do not write</text>
 
-      <!-- bracket showing the zoom range -->
+      <path class="ln ln-rule" d="M500 68 L500 80"/>
+      <text class="s-acc" x="505" y="90" font-size="11.5">0x100000 — see §06</text>
+
       <path class="ln-thin" d="M0 74 L0 84 L125 84 L125 74"/>
       <path class="ln-thin" d="M62 84 L62 96" stroke-dasharray="3 3"/>
       <text class="s-ink3" x="133" y="89" font-size="11">first 256 KiB, enlarged below</text>
 
-      <!-- ===== lower strip: first 256 KiB ===== -->
       <text class="s-ink3" x="0" y="128" font-size="12" letter-spacing="1.4">DETAIL · FIRST 256 KiB</text>
 
       <rect class="s-track" x="0" y="146" width="1000" height="52"/>
 
-      <!-- SPL -->
-      <rect class="blk" x="0" y="146" width="50.8" height="52"/>
-      <!-- 1st exec -->
-      <rect class="blk" x="93.8" y="146" width="181.6" height="52"/>
-      <!-- bitmap : the target -->
-      <rect class="s-accb" x="296.9" y="146" width="224.6" height="52"/>
-      <!-- 2nd exec runs off the right edge -->
-      <rect class="blk-soft"  x="609.4" y="146" width="390.6" height="52"/>
+      <rect class="blk"      x="0"     y="146" width="50.8"  height="52"/>
+      <rect class="blk"      x="93.8"  y="146" width="181.6" height="52"/>
+      <rect class="s-accb"   x="296.9" y="146" width="296.9" height="52"/>
+      <rect class="blk-soft" x="609.4" y="146" width="390.6" height="52"/>
       <path class="ln-cut" d="M990 146 L1000 146 L1000 198 L990 198"/>
 
-      <!-- in-block labels -->
-      <text class="on-bright" x="409" y="169" text-anchor="middle" font-size="13" font-weight="600">eGON.BMP</text>
-      <text class="on-bright" x="409" y="186" text-anchor="middle" font-size="12">the splash · 0xE600</text>
+      <text class="on-bright" x="445" y="169" text-anchor="middle" font-size="13" font-weight="600">eGON.BMP</text>
+      <text class="on-bright" x="445" y="186" text-anchor="middle" font-size="12">the splash · 0x13000 on v3.0</text>
       <text class="on-dark"   x="184" y="177" text-anchor="middle" font-size="12">eGON.EXE</text>
       <text class="on-dark"   x="800" y="177" text-anchor="middle" font-size="12">eGON.EXE — scope app →</text>
 
-      <!-- callout for SPL, too narrow for inside text -->
       <path class="ln ln-rule" d="M25 146 L25 134"/>
       <text class="s-ink2" x="30" y="131" font-size="12">eGON.BT0 — SPL, draws the splash</text>
 
-      <!-- axis -->
       <g font-size="11">
-        <path class="ln-thin" d="M0 198 L0 208 M296.9 198 L296.9 208 M521.5 198 L521.5 208 M609.4 198 L609.4 208 M999 198 L999 208"/>
+        <path class="ln-thin" d="M0 198 L0 208 M296.9 198 L296.9 208 M593.8 198 L593.8 208 M609.4 198 L609.4 208 M999 198 L999 208"/>
         <text class="s-ink3" x="0"     y="222">0x000000</text>
         <text class="s-acc"  x="296.9" y="222" text-anchor="middle">0x013000</text>
-        <text class="s-acc"  x="521.5" y="222" text-anchor="middle">0x021600</text>
-        <text class="s-ink3" x="609.4" y="222" text-anchor="middle">0x027000</text>
+        <text class="s-acc"  x="593.8" y="222" text-anchor="middle">0x026000</text>
+        <text class="s-ink3" x="620"   y="222">0x027000</text>
         <text class="s-ink3" x="999"   y="222" text-anchor="end">0x040000</text>
       </g>
-      <text class="s-acc" x="409" y="243" text-anchor="middle" font-size="11.5">↑ the 58,880 bytes you are going to rewrite</text>
+      <text class="s-acc" x="445" y="243" text-anchor="middle" font-size="11.5">↑ 77,824 bytes on this firmware — but read the header, don't trust this number</text>
 
-      <!-- pixel-payload breakdown bar -->
       <text class="s-ink3" x="0" y="272" font-size="11" letter-spacing="1.2">INSIDE THE BLOCK</text>
       <rect class="s-dan"  x="150"   y="261" width="1.9"   height="16"/>
-      <rect class="s-accb" x="151.9" y="261" width="825.6" height="16"/>
-      <rect class="s-pad"  x="977.5" y="261" width="22.5"  height="16"/>
-      <text class="on-bright" x="160" y="273" font-size="11">40 B header · 58,408 B pixels (298 × 98 × 2) · 432 B zero pad</text>
+      <rect class="s-accb" x="151.9" y="261" width="844.8" height="16"/>
+      <rect class="s-pad"  x="996.7" y="261" width="3.3"   height="16"/>
+      <text class="on-bright" x="160" y="273" font-size="11">40 B header · 77,480 B pixels (298 × 130 × 2) · 304 B zero pad</text>
     </svg>
-    <figcaption>Positions and widths are true to scale; the two narrowest blocks are drawn at
-    a minimum width so they remain visible. Note where the calibration sits on this chip: the very
-    last few kilobytes, not the middle. Roughly 1.1 MiB between the scope app and calibration is
-    unused.</figcaption>
+    <figcaption>Positions and widths are true to scale; the narrowest blocks are drawn at a minimum
+    width so they remain visible. The second bright block is not stock — it is where §06 puts a
+    full-screen bitmap, in space the factory leaves empty.</figcaption>
   </figure>
 
   <div class="tablewrap">
     <table>
       <thead>
-        <tr><th class="m">Offset</th><th class="m">Size</th><th>Magic</th><th>Contents</th><th>Checksum field</th></tr>
+        <tr><th class="m">Offset</th><th class="m">Size (v3.0)</th><th>Magic</th><th>Contents</th><th>Checksum field</th></tr>
       </thead>
       <tbody>
-        <tr><td class="m">0x000000</td><td class="m">0x3400</td><td class="m">eGON.BT0</td><td>SPL — loads the splash, starts the app</td><td>0xD9BA570B valid</td></tr>
+        <tr><td class="m">0x000000</td><td class="m">0x3400</td><td class="m">eGON.BT0</td><td>SPL — draws the splash, starts the app</td><td>valid sunxi sum</td></tr>
         <tr><td class="m">0x006000</td><td class="m">0xBA00</td><td class="m">eGON.EXE</td><td>1st executable — FEL helper</td><td>0x00000000</td></tr>
-        <tr class="target"><td class="m">0x013000</td><td class="m">0xE600</td><td class="m">eGON.BMP</td><td><strong>Boot splash — the target</strong></td><td>0x03098A00, not a sum</td></tr>
-        <tr><td class="m">0x027000</td><td class="m">0xBC400</td><td class="m">eGON.EXE</td><td>2nd executable — main scope app</td><td>0x00000000</td></tr>
-        <tr class="danger"><td class="m">0x1FD000</td><td class="m">~0x1F4</td><td class="m">—</td><td>Per-unit calibration / config</td><td>—</td></tr>
+        <tr class="target"><td class="m">0x013000</td><td class="m">0x13000</td><td class="m">eGON.BMP</td><td><strong>Boot splash — the target</strong></td><td>not a sum</td></tr>
+        <tr><td class="m">0x027000</td><td class="m">0xBCE00</td><td class="m">eGON.EXE</td><td>2nd executable — main scope app</td><td>not a sum</td></tr>
+        <tr class="danger"><td class="m">0x1FD000</td><td class="m">~0x1F4</td><td class="m">—</td><td>Per-unit calibration <em>and</em> live config</td><td>—</td></tr>
       </tbody>
     </table>
   </div>
 
+  <div class="note stop">
+    <span class="tag">This guide used to get this wrong</span>
+    <p>An earlier version stated that the splash block is identical across models — same
+    <code>0xE600</code>, same 298 × 98. <strong>It is not.</strong> The block varies by
+    <em>firmware version</em>, not by model.</p>
+    <p>A 1014D running <strong>v3.0</strong> carries a <code>0x13000</code>-byte block holding a
+    <strong>298 × 130</strong> image; the extra 32 rows are the "Firmware version: V3.0" line drawn
+    into the logo. Upstream's published 1014D dump is an older build: 298 × 98 in
+    <code>0xE600</code>. The two differ in <strong>1,566,094 of 2,097,152 bytes</strong>.</p>
+    <p>Only the offset <code>0x013000</code> and the pixel format are stable. <strong>Read geometry
+    from the block header</strong>, which is what <code>fnirsi_splash.py</code> does — and why it
+    read a v3.0 scope correctly with no changes.</p>
+  </div>
+
   <h3>On checksums</h3>
-  <p>The <code>eGON.BT0</code> field is a real, standard sunxi checksum — sum of 32-bit words
-  with the field itself replaced by the stamp <code>0x5F0A6C39</code> — and it verifies correctly
-  against genuine dumps. But the two <code>.EXE</code> blocks store <code>0x00000000</code>, and a
-  known-working patched image published upstream carries a <em>stale</em> BT0 checksum. So the
-  boot ROM is not enforcing it on the SPI path.</p>
-  <p>The splash block's field, <code>0x776F9CC9</code>, matches no sum over any range I tried, and
-  is byte-identical across every dump and every patched image. Treat it as a constant and leave it
-  alone — which is what the tool does by default.</p>
+  <p>The <code>eGON.BT0</code> field is a real, standard sunxi checksum — sum of 32-bit words with
+  the field itself replaced by the stamp <code>0x5F0A6C39</code> — and it verifies on genuine dumps,
+  on upstream's <code>fel-sdboot.sunxi</code>, and on a patched SPL that boots. The two
+  <code>.EXE</code> blocks and the <code>.BMP</code> field match no sum over any range tried.</p>
+  <p>A patched bitmap with a stale <code>.BMP</code> checksum boots fine. That is now confirmed on
+  hardware, twice. Leave the field alone, which is the tool's default.</p>
 </section>
 
 <section id="format">
@@ -449,17 +457,21 @@ hr.rule{border:none;border-top:1px solid var(--rule);margin:44px 0 0}
   <p class="lede">No compression, no palette, no encryption. Raw framebuffer bytes.</p>
 
   <dl class="kv">
-    <div><dt>Geometry</dt><dd>298 × 98<small>confirmed on a real 1014D dump</small></dd></div>
+    <div><dt>Geometry</dt><dd>from header<small>298 × 130 on v3.0</small></dd></div>
     <div><dt>Encoding</dt><dd>RGB565 LE<small>top-down, no stride padding</small></dd></div>
-    <div><dt>Pixel offset</dt><dd>0x13028<small>40 bytes into the block</small></dd></div>
-    <div><dt>Payload</dt><dd>58,408 B<small>then 432 B of zeroes</small></dd></div>
+    <div><dt>Pixel offset</dt><dd>block + 0x28<small>40 bytes of header</small></dd></div>
+    <div><dt>Panel</dt><dd>800 × 480<small>splash is centred on it</small></dd></div>
   </dl>
+
+  <p>The SPL reads width from header <code>0x1A</code> and height from <code>0x1C</code>, then
+  centres the image with <code>(800−w)/2, (480−h)/2</code>. So the stock splash is a small banner on
+  a much larger screen — that is FNIRSI's design, not a defect, and your replacement occupies exactly
+  the space theirs did unless you follow §06.</p>
 
   <figure>
     <p class="figtitle">Fig. 2 — one pixel, as stored</p>
     <svg viewBox="0 0 1000 168" role="img" aria-label="Bit layout of one RGB565 pixel across two bytes, showing red in the top five bits, green split across the byte boundary, and blue in the low five bits, with byte 0 stored first.">
       <g font-size="12">
-        <!-- 16 cells of 55px from x=60, drawn bit 15 down to bit 0 -->
         <g class="cell cell-r">
           <rect x="60"  y="46" width="55" height="46"/>
           <rect x="115" y="46" width="55" height="46"/>
@@ -483,269 +495,388 @@ hr.rule{border:none;border-top:1px solid var(--rule);margin:44px 0 0}
           <rect x="885" y="46" width="55" height="46"/>
         </g>
 
-        <!-- channel labels inside -->
         <text class="on-dark" x="197" y="75" text-anchor="middle" font-size="13" font-weight="600">R · 5 bits</text>
         <text class="on-dark" x="472" y="75" text-anchor="middle" font-size="13" font-weight="600">G · 6 bits</text>
         <text class="on-dark" x="802" y="75" text-anchor="middle" font-size="13" font-weight="600">B · 5 bits</text>
 
-        <!-- bit numbers -->
         <g class="s-ink3" font-size="10.5" text-anchor="middle">
           <text x="87"  y="40">15</text><text x="307" y="40">11</text>
           <text x="362" y="40">10</text><text x="637" y="40">5</text>
           <text x="692" y="40">4</text><text x="912" y="40">0</text>
         </g>
 
-        <!-- byte brackets -->
         <path class="ln ln-rule" d="M60 100 L60 112 L610 112 L610 100"/>
         <path class="ln ln-rule" d="M615 100 L615 112 L940 112 L940 100"/>
         <text class="s-ink2" x="335" y="130" text-anchor="middle">bits 15–8  =  byte 1</text>
         <text class="s-ink2" x="777" y="130" text-anchor="middle">bits 7–0  =  byte 0</text>
 
-        <!-- storage order -->
         <text class="s-acc" x="60" y="156" font-size="12.5">Stored little-endian: byte 0 first, then byte 1. Green straddles the byte boundary — this is the part people get wrong.</text>
 
-        <!-- figure label -->
         <text class="s-ink3" x="0" y="22" font-size="11" letter-spacing="1.3">ONE PIXEL · 16 BITS</text>
       </g>
     </svg>
     <figcaption>Value is <code>(R &lt;&lt; 11) | (G &lt;&lt; 5) | B</code>, written low byte first.
-    A whole 298 × 98 image is just 58,408 of these laid out row by row from the top left.</figcaption>
+    A 298 × 130 splash is 38,740 of these, laid out row by row from the top left.</figcaption>
   </figure>
 
   <div class="note good">
-    <span class="tag">Verified</span>
-    <p>Extracting the splash to PNG and re-encoding it back into the image reproduces the
-    original 4 MiB file <strong>byte for byte</strong>. That round trip is what proves the format
-    above is right rather than merely plausible.</p>
+    <span class="tag">Verified on hardware</span>
+    <p>Extract to PNG, re-encode, reinsert — reproduces the source image byte for byte, on three
+    different dumps now. And a replaced splash read back off the chip matched the intended file
+    across all 2,097,152 bytes.</p>
   </div>
 </section>
 
 <section id="kit">
   <h2><span class="num">03</span>What you need</h2>
   <ul>
-    <li>A microSD card — any size; only the first few KiB get used.</li>
-    <li><code>sunxi-fel</code> <strong>built with SPI flash support</strong>. The stock package
-    build often lacks it. A prebuilt copy ships in the upstream repo under
-    <code>Binaries/Hacked files/sunxi_stuff/</code>.</li>
+    <li><strong>The USB-A to USB-A cable the scope shipped with.</strong> That odd cable is the
+    whole story: the scope's port is a device port wired to the F1C100s.</li>
+    <li><code>sunxi-fel</code> <strong>built with SPI flash support</strong>. Stock distro packages
+    often lack it. A prebuilt copy ships upstream under
+    <code>Binaries/Hacked files/sunxi_stuff/</code>, and it runs fine on x86-64.</li>
     <li><code>fel-sdboot.sunxi</code>, from the same directory.</li>
-    <li>A USB cable to the scope, and <code>fnirsi_splash.py</code> from this project.</li>
+    <li>This project's <code>fnirsi_splash.py</code>, <code>backup-scope.sh</code>, and
+    <code>build-sd-wipe.py</code>.</li>
   </ul>
-  <p>You do <em>not</em> need to open the scope, and you do not need a SOIC clip. FEL mode reaches
-  the SPI flash over USB.</p>
+
+  <div class="note stop">
+    <span class="tag">You do not need a microSD card</span>
+    <p>An earlier version of this guide opened with "write the stub to a microSD and insert it."
+    <strong>The 1014D has no card slot.</strong> That instruction was inherited from 1013D material
+    and is wrong for this scope.</p>
+    <p>There <em>is</em> a card — it is internal, it holds your saved screenshots, and the boot ROM
+    checks it before SPI flash. You reach it over USB. See §04.</p>
+  </div>
+
+  <p>You do not need to open the scope and you do not need a SOIC clip.</p>
+</section>
+
+<section id="fel">
+  <h2><span class="num">04</span>Getting into FEL — and back out</h2>
+  <p class="lede">The way in is easy. The way out is the part nobody warns you about, so it is
+  documented here first.</p>
+
+  <h3>In: the internal card, over USB</h3>
+  <p>Boot the scope and open its <strong>USB connection screen</strong>. It enumerates as
+  <code>0483:5720</code> — ST's example IDs, which the firmware reuses verbatim — with SCSI vendor
+  <code>ADS1014D</code>. That disk is the SoC's MMC0, and the boot ROM reads it before SPI flash.</p>
+
+  <div class="sh">
+    <div class="sh-head">Confirm the node before you write to it</div>
+<pre><span class="p">$</span> lsblk -o NAME,SIZE,TRAN,VENDOR,MODEL
+sdb   7.5G usb  ADS1014D  USB DisK Disk
+
+<span class="c"># byte 8192 = sector 16. The FAT32 partition starts at sector 63 = byte 32256.</span>
+<span class="p">$</span> udisksctl unmount -b /dev/sdX1
+<span class="p">$</span> sudo dd if=fel-sdboot.sunxi of=/dev/sdX bs=1024 seek=8 conv=fsync
+
+<span class="c"># power-cycle the scope, then:</span>
+<span class="p">$</span> lsusb | grep 1f3a:efe8
+Bus 001 Device 033: ID 1f3a:efe8 Allwinner Technology sunxi SoC OTG connector in FEL mode</pre>
+  </div>
+
+  <div class="note warn">
+    <span class="tag">Check twice</span>
+    <p><code>/dev/sdX</code> is a placeholder. Confirm the <code>ADS1014D</code> vendor string and
+    the size before pressing enter. The 8 KiB stub lands in zeroed unallocated space with 15,872
+    bytes to spare before the filesystem, so your saved captures are untouched — but only if you
+    hit the right disk.</p>
+  </div>
+
+  <p>The scope now comes up with a <strong>blank screen</strong>. That is FEL succeeding, not a
+  fault: the SoC is sitting in USB recovery with no firmware running to draw anything.</p>
+
+  <h3>Out: the trap</h3>
+
+  <div class="note stop">
+    <span class="tag">Read this before you write the stub</span>
+    <p>The stub is self-perpetuating. FEL never starts the scope application — and the application
+    is the only thing that serves that card over USB. <strong>You cannot undo the write the way you
+    made it.</strong></p>
+    <p>Plan for this before you create the situation, not after.</p>
+  </div>
+
+  <p>Booting the app out of FEL does not work. These were all tried on real hardware and all
+  failed:</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Attempt</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="m">sunxi-fel spl &lt;stock SPL&gt;</td><td>Draws the splash, then hands control back to FEL — <code>spl</code> patches an SPL to return</td></tr>
+        <tr><td class="m">write 0x0 &lt;spl&gt; exe 0x0</td><td><code>ERROR -1</code>. FEL's exception vectors live in SRAM at <code>0x0</code></td></tr>
+        <tr><td class="m">write 0x7FFFFFE0 &lt;app&gt; exe</td><td>DRAM is not initialised in a bare FEL — <code>readl 0x80000000</code> returns zeros</td></tr>
+        <tr><td class="m">peco bootloader → SPI app</td><td>Loads and jumps; black screen. Unchanged with caches disabled</td></tr>
+        <tr><td class="m">peco bootloader → 0xFFFF0020</td><td>DRAM comes up, FEL does not re-enter cleanly; screen fills with framebuffer noise</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>What works is not booting the scope at all.</strong> Run code that writes to the card
+  directly. <code>build-sd-wipe.py</code> takes upstream's <code>fnirsi_1014d_startup</code>
+  bootloader — which already brings up clocks, DRAM, display and the SD card, and links in
+  <code>sd_card_write()</code> — and replaces its dead SD-boot path with about a hundred bytes that
+  zero sector 16 for 16 blocks.</p>
+
+  <div class="sh">
+    <div class="sh-head">The way out — screen goes green on success, red on failure</div>
+<pre><span class="p">$</span> python3 build-sd-wipe.py work/peco-bootloader.bin work/sd-wipe.bin
+<span class="p">$</span> sudo ./sunxi-fel spl work/sd-wipe.bin</pre>
+  </div>
+
+  <p>Power-cycle. The boot ROM finds nothing on the card, falls through to SPI flash, and the scope
+  boots normally.</p>
+
+  <div class="note unk">
+    <span class="tag">Two sunxi-fel behaviours that will waste your evening</span>
+    <p><strong>A FEL session is effectively single-use.</strong> After any <code>spiflash-write</code>
+    or <code>spl</code>, the next bulk transfer fails with
+    <code>usb_bulk_send() ERROR -7: Operation timed out</code>. Power-cycle between every operation.
+    This is not a failure and not your cable.</p>
+    <p><strong>After running code that never returns, <code>ERROR -7</code> is the expected
+    result.</strong> Judge by the scope's screen, never the terminal. And <code>lsusb</code> caches:
+    a running app that isn't driving USB leaves the stale FEL entry listed, so <code>lsusb</code>
+    cannot tell you whether the app started.</p>
+  </div>
 </section>
 
 <section id="procedure">
-  <h2><span class="num">04</span>The procedure</h2>
-  <p class="lede">Ordered by risk: everything that protects you happens before anything that
-  changes the scope.</p>
+  <h2><span class="num">05</span>The procedure</h2>
+  <p class="lede">Ordered by risk: everything that protects you happens before anything that changes
+  the scope.</p>
 
-  <h3>Step 1 — Get into FEL mode</h3>
-  <p>Write the FEL boot stub to the SD card, put it in the scope, power on. The stub hands control
-  straight to USB recovery.</p>
-  <div class="sh">
-    <div class="sh-head">Check the device node first — this writes to a raw disk</div>
-<pre><span class="c"># confirm which node is your SD card, and that it is NOT your system disk</span>
-<span class="p">$</span> lsblk -o NAME,SIZE,TRAN,MODEL
-
-<span class="p">$</span> sudo dd if=fel-sdboot.sunxi of=/dev/sdX bs=1024 seek=8 conv=fsync
-
-<span class="c"># insert the card, power the scope on, then confirm it enumerated:</span>
-<span class="p">$</span> lsusb | grep 1f3a:efe8
-Bus 001 Device 026: ID 1f3a:efe8 Onda (unverified) V972 tablet in flashing mode</pre>
-  </div>
-  <div class="note warn">
-    <span class="tag">Check twice</span>
-    <p><code>/dev/sdX</code> is a placeholder. Writing this to the wrong node destroys the
-    partition table of whatever it hits. Confirm the size and model match your SD card before
-    pressing enter.</p>
-  </div>
-
-  <h3>Step 2 — Back up the whole chip, twice</h3>
+  <h3>Step 1 — Back up the whole chip, twice</h3>
   <p>Two independent reads compared against each other. If they differ, the read is unreliable and
-  you must not proceed — a corrupt backup is worse than no backup, because you will trust it.</p>
+  you must not proceed — a corrupt backup is worse than none, because you will trust it.</p>
   <div class="sh">
-    <div class="sh-head">Do not skip the compare</div>
-<pre><span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 backup-1.bin
+    <div class="sh-head">backup-scope.sh does all of this and refuses to continue on a mismatch</div>
+<pre><span class="p">$</span> FEL=./work/sunxi-fel ./backup-scope.sh
+
+<span class="c"># or by hand:</span>
+<span class="p">$</span> sudo ./sunxi-fel spiflash-info
+Manufacturer: Winbond (EFh), model: 40h, size: 2097152 bytes.
+
+<span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 backup-1.bin
+<span class="c"># power-cycle, then the second read</span>
 <span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 backup-2.bin
-
-<span class="p">$</span> cmp backup-1.bin backup-2.bin &amp;&amp; echo "reads agree"
-<span class="p">$</span> sha256sum backup-1.bin | tee backup.sha256
-
-<span class="c"># pull the calibration region out on its own, and put it somewhere safe</span>
-<span class="p">$</span> dd if=backup-1.bin of=calibration-0x1FD000.bin bs=4096 skip=509 count=2</pre>
+<span class="p">$</span> cmp backup-1.bin backup-2.bin &amp;&amp; echo "reads agree"</pre>
   </div>
-  <p>Copy <code>backup-1.bin</code> off this machine — another drive, another host, anywhere that
-  is not the laptop you are about to run flashing commands on.</p>
+  <p>Copy the backup <em>off</em> this machine before going further. Run <code>spiflash-info</code>
+  first and believe it over this guide: it reads the chip's own JEDEC ID.</p>
 
-  <h3>Step 3 — Confirm your scope's actual geometry</h3>
-  <p>This is the step that makes the rest safe on a 1014D rather than a 1013D.</p>
+  <h3>Step 2 — Confirm your scope's actual geometry</h3>
   <div class="sh">
-    <div class="sh-head">Read your own dump, don't assume mine</div>
+    <div class="sh-head">Read your own dump, don't assume anyone else's</div>
 <pre><span class="p">$</span> python3 fnirsi_splash.py info backup-1.bin
 <span class="p">$</span> python3 fnirsi_splash.py extract backup-1.bin -o stock.png -s 2</pre>
   </div>
-  <p>Look at <code>stock.png</code>. If it is your scope's real boot logo and <code>info</code>
-  reports a sane width and height, the layout holds on your unit and you can continue. If the
-  magic is missing or the image is garbage, stop and re-examine — do not write.</p>
+  <p>Look at <code>stock.png</code>. If it is your scope's real boot logo and the reported geometry
+  is sane, the layout holds on your unit. If it is garbage, stop — do not write. The version string
+  drawn into that image also tells you which firmware you are on.</p>
 
-  <h3>Step 4 — Make the new splash</h3>
-  <p>Author at exactly the size <code>info</code> reported. The tool will resize and letterbox
-  anything else onto black, but you get a sharper result by matching it yourself. Bear in mind the
-  destination is 16-bit colour: flat brand colours and clean type survive well, subtle gradients
-  band unless dithered, which the tool does by default.</p>
+  <h3>Step 3 — Make the new splash</h3>
+  <p>Author at exactly the size <code>info</code> reported. Anything else gets letterboxed onto
+  black, or scaled to fill with <code>--stretch</code>. The destination is 16-bit colour: flat
+  colours and clean type survive well, gradients band unless dithered, which the tool does by
+  default.</p>
   <div class="sh">
-    <div class="sh-head">Build the patched image — never in place</div>
+    <div class="sh-head">Build a patched copy — never edit in place</div>
 <pre><span class="p">$</span> python3 fnirsi_splash.py replace backup-1.bin mylogo.png -o patched.bin
 
-checksum field left at 0x776F9CC9 (unchanged)
-wrote patched.bin
-changed 4K pages: 15 -&gt; ['0x13000', ... , '0x21000']
+changed 4K pages: 19 -&gt; ['0x13000', ... , '0x25000']
 calibration region at 0x1FD000: untouched
 
-<span class="c"># read it back out of the patched file and look before you commit it</span>
 <span class="p">$</span> python3 fnirsi_splash.py extract patched.bin -o preview.png -s 2</pre>
   </div>
   <p>The tool refuses to emit a file whose calibration region differs from the source, so a
-  successful write here is itself a check. Confirm the changed-page list contains only pages in
-  <code>0x13000</code>–<code>0x21000</code>.</p>
+  successful write here is itself a check.</p>
 
-  <h3>Step 5 — Write it</h3>
+  <h3>Step 4 — Write only the block you changed</h3>
   <div class="sh">
     <div class="sh-head">The only destructive command in this guide</div>
-<pre><span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0 patched.bin
+<pre><span class="c"># cut out just the bitmap block — 4K aligned, so it flashes cleanly</span>
+<span class="p">$</span> dd if=patched.bin of=splash-block.bin bs=4096 skip=19 count=19
 
-<span class="c"># verify the chip now matches what you intended, before power-cycling</span>
+<span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0x13000 splash-block.bin
+
+<span class="c"># power-cycle first — the session is stale after a write</span>
 <span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 verify.bin
 <span class="p">$</span> cmp verify.bin patched.bin &amp;&amp; echo "flash matches"</pre>
   </div>
-  <p>Then remove the SD card and power-cycle. You should get your own logo where FNIRSI's used to
-  be, followed by a completely normal boot into the scope application.</p>
+
+  <div class="note good">
+    <span class="tag">Prefer this to a full-chip write</span>
+    <p>Upstream's instructions write all 2 MiB. Don't. A partial write at <code>0x13000</code>
+    never erases the calibration sectors, so the one unrecoverable region is never in play — not
+    even for the milliseconds a full-chip write would have it erased.</p>
+    <p>The <code>skip</code> and <code>count</code> above are <code>0x13000 / 4096 = 19</code>. If
+    your block size differs, recompute both from your own <code>info</code> output.</p>
+  </div>
+
+  <p>Then clear the FEL stub (§04) and power-cycle. Your logo, then a completely normal boot.</p>
+</section>
+
+<section id="fullscreen">
+  <h2><span class="num">06</span>Full screen, if the banner isn't enough</h2>
+  <p class="lede">Done and working: 800 × 480, the whole panel. This is a bigger change than swapping
+  pixels, and the risk is different in kind.</p>
+
+  <p>The stock block cannot hold a full-screen image — 77,784 bytes of payload, and the app starts
+  right behind it at <code>0x27000</code>. But 800 × 480 × 2 = 768,000 bytes fits comfortably in the
+  1,151,488 bytes the factory leaves empty between the app and calibration. So put the bitmap there
+  and repoint the SPL.</p>
+
+  <div class="sh">
+    <div class="sh-head">The SPL's memory map, from disassembling it</div>
+<pre>0x50c   mov r5, 0x80000000       <span class="c">app load address</span>
+0x510   mov sb, 0x81000000       <span class="c">splash pixel buffer — 11.5 MB of headroom</span>
+0x514   add r7, r5, 0x1b00000    <span class="c">framebuffer at 0x81B00000</span>
+0x548   mov r0, #0x13000         <span class="c">bitmap header address  ← instruction immediate</span>
+0x75c   .word 0x13028            <span class="c">bitmap pixel address   ← literal</span></pre>
+  </div>
+
+  <p>Two words. <code>build-bigsplash.py</code> writes a new <code>eGON.BMP</code> at
+  <code>0x100000</code> and patches both, recomputing the BT0 checksum. Seven bytes change in the
+  SPL. Because the SPL centres with <code>(800−w)/2, (480−h)/2</code>, an 800 × 480 image lands at
+  <code>(0,0)</code> with no scaling and no bars.</p>
+
+  <div class="sh">
+    <div class="sh-head">Bitmap first, SPL last</div>
+<pre><span class="p">$</span> python3 build-bigsplash.py patched.bin mylogo-800x480.png bigsplash.bin
+
+<span class="p">$</span> dd if=bigsplash.bin of=bmp-new.bin bs=4096 skip=256 count=188
+<span class="p">$</span> dd if=bigsplash.bin of=spl-new.bin bs=4096 count=4
+
+<span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0x100000 bmp-new.bin
+<span class="c"># power-cycle</span>
+<span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0x0 spl-new.bin</pre>
+  </div>
+
+  <div class="note warn">
+    <span class="tag">Order is a safety property, not a preference</span>
+    <p>Until the SPL is rewritten it still points at <code>0x13000</code>, so an interruption
+    partway leaves a scope that boots normally. Only the final seven bytes switch it over.
+    Rewriting the SPL is the one step here that can stop the scope booting from SPI — recovery is
+    §04 plus <code>spiflash-write 0</code> with your backup's SPL.</p>
+  </div>
+
+  <div class="note stop">
+    <span class="tag">Do not overwrite the old block at 0x13000</span>
+    <p>The SPL is <em>not</em> the only consumer of the splash. The <strong>scope app draws it again
+    on power-down</strong>, and its reference still points at <code>0x13000</code>. Observed on the
+    bench: after relocating the boot splash, power-off still showed the old image.</p>
+    <p>So leave the original block in place. Overwrite it and you corrupt the shutdown screen. The
+    consequence of doing this properly is a scope that shows the <strong>large splash at boot and
+    the small one at shutdown</strong> — matching them would mean finding the app's own reference
+    inside the <code>0xBCE00</code> block, which has not been attempted.</p>
+  </div>
 </section>
 
 <section id="checklist">
-  <h2><span class="num">05</span>Bench checklist</h2>
+  <h2><span class="num">07</span>Bench checklist</h2>
   <p class="lede">Tick as you go. Saved in this browser, so it survives a reload mid-job.</p>
   <ul class="check" id="cl">
-    <li><label><input type="checkbox" data-k="c1"><span class="t">SD card node confirmed against <code>lsblk</code> — not the system disk</span></label></li>
-    <li><label><input type="checkbox" data-k="c2"><span class="t">Scope enumerates as <code>1f3a:efe8</code> in FEL mode</span></label></li>
-    <li><label><input type="checkbox" data-k="c3"><span class="t">Two full reads taken and <code>cmp</code> says they agree</span></label></li>
-    <li><label><input type="checkbox" data-k="c4"><span class="t">SHA-256 recorded, backup copied <em>off</em> this machine</span></label></li>
-    <li><label><input type="checkbox" data-k="c5"><span class="t">Calibration region extracted to its own file</span></label></li>
-    <li><label><input type="checkbox" data-k="c6"><span class="t"><code>info</code> reports valid eGON.BMP geometry on <em>my</em> dump</span></label></li>
-    <li><label><input type="checkbox" data-k="c7"><span class="t">Extracted stock splash looks like my scope's real logo</span></label></li>
-    <li><label><input type="checkbox" data-k="c8"><span class="t">Patched image changes only pages 0x13000–0x21000</span></label></li>
-    <li><label><input type="checkbox" data-k="c9"><span class="t">Preview extracted from the patched file looks right</span></label></li>
-    <li><label><input type="checkbox" data-k="c10"><span class="t">Post-write read-back matches the patched image</span></label></li>
+    <li><label><input type="checkbox" data-k="c1"><span class="t"><code>build-sd-wipe.py</code> built <em>before</em> writing the stub — I know my way out</span></label></li>
+    <li><label><input type="checkbox" data-k="c2"><span class="t">Disk node confirmed as <code>ADS1014D</code> — not my system disk</span></label></li>
+    <li><label><input type="checkbox" data-k="c3"><span class="t">Scope enumerates as <code>1f3a:efe8</code>; blank screen is expected</span></label></li>
+    <li><label><input type="checkbox" data-k="c4"><span class="t"><code>spiflash-info</code> reports the size I expected</span></label></li>
+    <li><label><input type="checkbox" data-k="c5"><span class="t">Two full reads taken and <code>cmp</code> says they agree</span></label></li>
+    <li><label><input type="checkbox" data-k="c6"><span class="t">Backup copied <em>off</em> this machine</span></label></li>
+    <li><label><input type="checkbox" data-k="c7"><span class="t"><code>info</code> geometry read from <em>my</em> dump, not from this guide</span></label></li>
+    <li><label><input type="checkbox" data-k="c8"><span class="t">Extracted stock splash looks like my scope's real logo</span></label></li>
+    <li><label><input type="checkbox" data-k="c9"><span class="t">Patched image changes only pages inside the bitmap block</span></label></li>
+    <li><label><input type="checkbox" data-k="c10"><span class="t">Partial write used — calibration sectors never erased</span></label></li>
+    <li><label><input type="checkbox" data-k="c11"><span class="t">Power-cycled between every FEL operation</span></label></li>
+    <li><label><input type="checkbox" data-k="c12"><span class="t">Post-write read-back matches the patched image</span></label></li>
+    <li><label><input type="checkbox" data-k="c13"><span class="t">FEL stub cleared from the card and the scope boots on its own</span></label></li>
   </ul>
 </section>
 
 <section id="recovery">
-  <h2><span class="num">06</span>If it goes wrong</h2>
+  <h2><span class="num">08</span>If it goes wrong</h2>
 
   <h3>Blank screen, but FEL still works</h3>
-  <p>This is the ordinary failure and it is not serious. The SPL or splash block is unhappy;
-  the boot ROM still answers over USB. Put the FEL card back in, power on, and restore:</p>
+  <p>This is the ordinary failure and it is not serious. The SPL or splash block is unhappy; the
+  boot ROM still answers over USB.</p>
   <div class="sh">
-    <div class="sh-head">Full restore from backup</div>
-<pre><span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0 backup-1.bin
-<span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 check.bin
-<span class="p">$</span> cmp check.bin backup-1.bin &amp;&amp; echo "restored"</pre>
+    <div class="sh-head">Restore just the SPL, or the whole chip</div>
+<pre><span class="p">$</span> dd if=backup-1.bin of=spl-orig.bin bs=4096 count=4
+<span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0x0 spl-orig.bin
+
+<span class="c"># or, if you must, everything:</span>
+<span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0 backup-1.bin</pre>
   </div>
+  <p>Prefer restoring the SPL alone. A full restore rewrites your calibration sectors with a copy
+  that is correct but no longer current, and puts the one irreplaceable region through an erase
+  cycle for no reason.</p>
+
+  <h3>Every command returns ERROR -7</h3>
+  <p>Power-cycle the scope. A FEL session does not survive a write or an <code>spl</code>. This is
+  the single most common way to lose an hour convincing yourself the scope is dead.</p>
 
   <h3>Nothing enumerates at all</h3>
-  <p>The F1C100s boot ROM enters FEL when it cannot find valid boot media, and the SD card is
-  checked before SPI flash — which is exactly why the FEL card is your way back in. If USB is
-  silent even with the card inserted, suspect the cable, the port, or power before suspecting the
-  flash.</p>
+  <p>The boot ROM enters FEL when it cannot find valid boot media, and the internal card is checked
+  before SPI flash — which is exactly why the stub is your way back in. If USB is silent, suspect
+  the cable, the port, or power before suspecting the flash.</p>
 
   <h3>Scope boots but is out of calibration</h3>
-  <p>If measurements are visibly wrong after a write, restore <code>backup-1.bin</code> in full.
-  If you no longer have it, this is the outcome the whole guide exists to prevent, and there is no
-  clean fix — the values were specific to your hardware.</p>
-</section>
-
-<section id="alt">
-  <h2><span class="num">07</span>The other route, and what it actually does</h2>
-  <p>The scope exposes its internal storage as USB mass storage, and writing a boot image to that
-  device at an 8 KiB offset makes the scope boot from it instead of SPI flash — reversible by
-  zeroing a single block:</p>
-  <div class="sh">
-    <div class="sh-head">Alternative firmware from SD — not a splash edit</div>
-<pre><span class="p">$</span> sudo umount /dev/sdX1
-<span class="p">$</span> sudo dd if=fnirsi_1013d.bin of=/dev/sdX bs=1024 seek=8
-
-<span class="c"># and to undo it completely:</span>
-<span class="p">$</span> sudo dd if=/dev/zero of=/dev/sdX bs=1024 seek=8 count=1</pre>
-  </div>
-  <div class="note unk">
-    <span class="tag">Worth being precise about</span>
-    <p>This is genuinely the lowest-risk way to <em>run different firmware</em>, because it never
-    writes to SPI flash at all. But it is not a way to change the stock splash: it replaces the
-    entire boot chain with pecostm32's open firmware, which draws its own logo from its own source.
-    Changing that means rebuilding that project, not patching a bitmap.</p>
-    <p>If your goal is your own logo in front of the <em>stock</em> scope application, Section 04
-    is the route. If you would rather run open firmware anyway, this is the safer starting point
-    and the splash question moves into its source tree.</p>
-  </div>
+  <p>Restore <code>backup-1.bin</code> in full. If you no longer have it, this is the outcome the
+  whole guide exists to prevent, and there is no clean fix — the values were specific to your
+  hardware.</p>
 </section>
 
 <section id="open">
-  <h2><span class="num">08</span>What is confirmed, and what isn't</h2>
-  <p class="lede">Updated after a genuine 1014D flash dump turned up — the earlier version of this
-  guide was written from 1013D dumps and had the chip size wrong.</p>
+  <h2><span class="num">09</span>What is confirmed, and what isn't</h2>
+  <p class="lede">Rewritten after running the whole procedure on a real scope. Several things this
+  guide previously stated with confidence turned out to be wrong.</p>
 
   <div class="note good">
-    <span class="tag">Confirmed on a real 1014D</span>
-    <p>A full 1014D flash backup exists upstream, under
-    <code>Test code/1014D_Emulator/</code>. Against it: the splash sits at the same
-    <code>0x13000</code>, the same <code>0xE600</code> block, and the same
-    <strong>298 × 98</strong> geometry as the 1013D. Extract-then-reinsert reproduces that
-    2 MiB image byte for byte, so the format holds on this model, not just by inference from
-    the 1013D.</p>
+    <span class="tag">Confirmed on hardware</span>
+    <p>SoC <code>0x1663</code> (F1C100s) and a Winbond <code>EFh</code>/<code>40h</code>
+    <strong>2,097,152-byte</strong> flash, from the chip's own ID rather than from a dump. A
+    298 × 130 splash replaced and read back byte-identical. A full-screen 800 × 480 splash at
+    <code>0x100000</code> with a patched SPL, likewise byte-identical and rendering correctly. FEL
+    entry via the internal card, and the payload that undoes it. The BT0 checksum algorithm, on
+    three different SPL images including one that boots.</p>
   </div>
 
-  <div class="note warn">
-    <span class="tag">Different from the 1013D</span>
-    <p>The 1014D uses a <strong>2 MiB</strong> chip, not the 4 MiB part on later 1013D units, and
-    both executable blocks are different sizes (<code>0xBA00</code> and <code>0xBC400</code>
-    against <code>0x7A00</code> and <code>0x193A00</code>). The consequence for you is the read
-    length: <code>0x200000</code>, not <code>0x400000</code>. It also moves calibration from the
-    middle of the chip to the last few kilobytes.</p>
+  <div class="note stop">
+    <span class="tag">Corrected — this guide was wrong</span>
+    <p><strong>The splash block is not fixed across models.</strong> It varies by firmware. See §01.</p>
+    <p><strong>There is no external SD card slot.</strong> The old step 1 told you to insert one. See §03.</p>
+    <p><strong><code>0x1FD000</code> is not calibration alone.</strong> The firmware rewrites config
+    there during normal use. See §00.</p>
   </div>
 
   <h3>Still open</h3>
   <ul>
-    <li><strong>Whether your unit matches this dump.</strong> One 1014D backup is one data point.
-    Step 3 is still the gate — run <code>info</code> on your own dump and confirm the geometry
-    before writing anything.</li>
     <li><strong>The A/B display variants.</strong> Official firmware ships as <code>-A-</code> and
     <code>-B-</code> builds for different panels, with a documented symptom of the image shifting
-    left on the wrong one. Whether that reaches the splash block is unknown.</li>
-    <li><strong>The stock update file was not obtained.</strong> Latest official appears to be
-    <code>v3.0</code> dated 2021-10-06, shipped as <code>FSI-1014.bin</code> on a USB stick.
-    FNIRSI's download page builds its links in JavaScript and could not be scraped; third-party
-    mirrors were deliberately not used. The upstream dump made this non-blocking.</li>
-    <li><strong>Whether the SPL validates the splash block.</strong> Still untested. The two
-    dumps carry <em>different</em> values in that header field — <code>0x776F9CC9</code> and
-    <code>0x03098A00</code> — so it is not a shared constant, but neither is a sum over any range
-    tried, and patched images that work in the field leave it stale.</li>
+    left on the wrong one. The splash rendered correctly here with no horizontal offset, at two
+    different geometries — one unit, so evidence, not proof.</li>
+    <li><strong>Why the v3.0 app will not start under upstream's bootloader.</strong> It is loaded
+    and jumped to; the screen stays black. Cache coherency was the obvious suspect and disabling
+    both caches changed nothing.</li>
+    <li><strong>The <code>.BMP</code> checksum field.</strong> Still matches no sum over any range
+    tried. Left untouched, and a stale value boots — now confirmed twice on hardware.</li>
+    <li><strong>Matching the shutdown splash.</strong> The app holds its own reference to
+    <code>0x13000</code> somewhere in its <code>0xBCE00</code> block. Finding it is the same kind of
+    search that worked on the SPL, but there is no source for v3.0.</li>
   </ul>
 </section>
 
 <footer>
   <div class="footer-inner">
-    <p>Built from analysis of the public dumps in
+    <p>Built on the reverse engineering in
     <a href="https://github.com/pecostm32/FNIRSI-1013D-1014D-Hack">pecostm32/FNIRSI-1013D-1014D-Hack</a>
     and <a href="https://github.com/pecostm32/FNIRSI_1014D_Firmware">pecostm32/FNIRSI_1014D_Firmware</a>,
-    whose reverse engineering everything here rests on. Hardware identification from the
-    <a href="https://circuitdigest.com/articles/fnirsi-1014d-oscilloscope-teardown">CircuitDigest teardown</a>
-    and <a href="https://www.cnx-software.com/2022/11/16/fnirsi-1013d-teardown-and-mini-review-a-portable-oscilloscope-based-on-allwinner-cpu-anlogic-fgpa/">CNX Software</a>.</p>
-    <p>Flash offsets, the RGB565 layout and the checksum findings were re-derived and verified
-    locally against the 4 MiB dumps rather than taken on trust. The lossless round trip is the
-    evidence. Everything in Section 08 is not yet evidence of anything.</p>
+    without which none of this would be reachable. The SD-wipe payload is their
+    <code>fnirsi_1014d_startup</code> bootloader with about a hundred bytes changed.</p>
+    <p>Everything in §00–§08 was executed on a physical FNIRSI 1014D running firmware v3.0 and
+    verified by full-chip read-back. §09 is the part that is still inference.</p>
   </div>
 </footer>
-
 </div>
 
 <script>
