@@ -42,7 +42,7 @@ if ! lsusb | grep -q '1f3a:efe8'; then
 fi
 lsusb | grep '1f3a:efe8'
 
-"$FEL" version || die "sunxi-fel could not talk to the device"
+sudo "$FEL" version || die "sunxi-fel could not talk to the device"
 
 mkdir -p "$OUTDIR"
 cd "$OUTDIR"

@@ -30,16 +30,28 @@ the first version of the tooling assumed 4 MiB from 1013D dumps. Read length is
 
 Four Allwinner eGON blocks near the start, calibration at the end.
 
-| Offset | Block | 1014D size | 1013D size |
-|---|---|---|---|
-| `0x000000` | `eGON.BT0` — SPL, draws the splash | `0x3400` | `0x3400` |
-| `0x006000` | `eGON.EXE` — FEL helper | `0xBA00` | `0x7A00` |
-| `0x013000` | **`eGON.BMP` — the splash** | `0xE600` | `0xE600` |
-| `0x027000` | `eGON.EXE` — scope app | `0xBC400` | `0x193A00` |
-| `0x1FD000` | per-unit calibration | ~`0x1F4` | ~`0x1F4` |
+| Offset | Block | 1014D v3.0 (measured) | upstream 1014D | 1013D |
+|---|---|---|---|---|
+| `0x000000` | `eGON.BT0` — SPL, draws the splash | `0x3400` | `0x3400` | `0x3400` |
+| `0x006000` | `eGON.EXE` — FEL helper | `0xBA00` | `0xBA00` | `0x7A00` |
+| `0x013000` | **`eGON.BMP` — the splash** | `0x13000` | `0xE600` | `0xE600` |
+| `0x027000` | `eGON.EXE` — scope app | `0xBCE00` | `0xBC400` | `0x193A00` |
+| `0x1FD000` | calibration **and configuration** | ~`0x1F4` | ~`0x1F4` | ~`0x1F4` |
 
-The splash block is **identical across both models** — same offset, same size,
-same 298 × 98 geometry. Only the executable blocks and total chip size differ.
+**The splash block is _not_ identical across firmwares.** An earlier version of
+this file claimed it was — same offset, same size, same 298 × 98 — and hardware
+disproved it. A genuine 1014D running **firmware v3.0** has a `0x13000`-byte
+block holding a **298 × 130** image; the extra 32 rows are the "Firmware
+version: V3.0" line. Upstream's 1014D dump is an older build: 298 × 98 in
+`0xE600`. The two dumps differ in **1,566,094 of 2,097,152 bytes**.
+
+Only the offset `0x013000` and the format are stable. Read geometry from the
+block header, never from this table — which is what `fnirsi_splash.py` does, and
+why it read a v3.0 scope correctly with no changes.
+
+Free space runs from the end of the app (`0xE3E00` on v3.0) to `0x1FD000` —
+1,151,488 bytes, enough for a full-screen 800 × 480 splash. See
+**Full-screen splash** below.
 
 ### eGON block header
 
@@ -77,12 +89,103 @@ genuine dumps. Do not assume the others do:
 1. **`0x1FD000` is per-unit calibration and cannot be replaced.** Two genuine
    dumps are byte-identical everywhere except two 4 KiB pages there. Nobody
    else's dump is a valid restore image for this scope.
+   It also holds **live configuration the firmware rewrites in normal use** —
+   measured: `0x1FD014` went `0x04` → `0x03` across one ordinary boot, with no
+   write from us. So two dumps of *your own* scope will differ here too. This
+   does not weaken the rule; it means a re-read is not proof of a stray write.
 2. **Never write before a verified backup exists.** Two independent reads,
    compared with `cmp`. A backup you cannot trust is worse than none, because
    you will rely on it.
 3. **Never write to a device node without confirming it.** `/dev/sdX` in any
    documentation here is a placeholder.
 4. Prefer building a patched copy (`-o patched.bin`) over editing in place.
+
+## Getting into FEL — measured on hardware
+
+**The 1014D has no external SD slot.** The bench guide's original step 1 ("write
+the stub to a microSD, insert it") was inherited from 1013D material and is
+wrong for this scope. The card is *internal*, and the boot ROM checks it before
+SPI flash, so it is still the way in — you reach it over USB.
+
+1. Boot the scope, open its **USB connection screen**. It enumerates as
+   `0483:5720` (ST's example IDs, which upstream's `mass_storage_class.c`
+   reproduces verbatim) with SCSI vendor `ADS1014D`. That disk *is* the SoC's
+   MMC0, served by `sd_card_read`/`sd_card_write`.
+2. `dd if=fel-sdboot.sunxi of=/dev/sdX bs=1024 seek=8` — byte 8192, i.e. sector
+   16. The FAT32 partition starts at **sector 63 = byte 32256**, so the 8 KiB
+   stub sits in zeroed unallocated space with 15,872 bytes to spare.
+3. Power-cycle. The scope comes up as `1f3a:efe8` with a blank screen. That is
+   FEL, not a fault.
+
+### Getting back out — the trap
+
+The stub is self-perpetuating: FEL never runs the app, and the app is the only
+thing that exposes the card. **You cannot undo step 2 the way you did it.**
+
+Booting the app from FEL does not work, and several plausible routes were tried
+and failed on real hardware:
+
+- `sunxi-fel spl <FNIRSI SPL>` — draws the splash, then returns to FEL.
+  `sunxi-fel spl` patches an SPL to hand control back when it finishes.
+- `write 0x0 <spl> exe 0x0` — `ERROR -1`. FEL's exception vectors live in SRAM
+  at `0x0`; writing there kills FEL mid-transfer. Anything linked at `0x0` must
+  go through `spl`.
+- `write 0x7FFFFFE0 <app> exe 0x80000000` in a fresh FEL — DRAM is not
+  initialised (`readl 0x80000000` returns zeros), so this jumps into nothing.
+- peco's bootloader patched to boot from SPI, with and without caches enabled —
+  loads the v3.0 app and jumps, black screen every time.
+- peco's bootloader patched to its "FEL mode" branch (`0xFFFF0020`) — DRAM comes
+  up but FEL does not re-enter cleanly; screen fills with uninitialised
+  framebuffer noise and bulk transfers time out.
+
+**What works:** `work/sd-wipe.bin`, built by `work/build-sd-wipe.py`. It takes
+upstream's `fnirsi_1014d_startup` bootloader — which already brings up clocks,
+DRAM, display and the SD card, and links in `sd_card_write()` — and replaces its
+dead SD-boot path with ~100 bytes that zero sector 16 for 16 blocks. Screen goes
+green on success, red on failure. Don't boot the scope to fix the card; run code
+that writes to the card.
+
+### sunxi-fel behaviour worth knowing
+
+- **A FEL session is single-use.** After any `spiflash-write` or `spl`, the next
+  bulk transfer fails with `usb_bulk_send() ERROR -7`. Power-cycle between
+  every operation. Most of one evening was lost to reading this as failure.
+- After running code that never returns, `ERROR -7` is the *expected* result —
+  judge by the scope's screen, not the terminal.
+- `lsusb` caches. A running app that doesn't drive USB leaves the old FEL entry
+  listed, so `lsusb` cannot distinguish "app running" from "still in FEL".
+
+## Full-screen splash
+
+Done and working: 800 × 480, the full panel. The stock block cannot hold it
+(77,784 bytes of payload, and the app starts right behind at `0x27000`), so the
+bitmap is relocated and the SPL repointed.
+
+The SPL's memory map, from disassembling it:
+
+```
+0x50c   mov r5, 0x80000000       app load address
+0x510   mov sb, 0x81000000       splash pixel buffer  (11,534,336 B of headroom)
+0x514   add r7, r5, 0x1b00000    framebuffer at 0x81B00000
+0x548   mov r0, #0x13000         bitmap header address   <- instruction immediate
+0x75c   .word 0x13028            bitmap pixel address    <- literal
+```
+
+It reads size from header `0x10`, width from `0x1A`, height from `0x1C`, and
+centres with `(800-w)/2, (480-h)/2` — so 800 × 480 lands at `(0,0)`. Header
+fields `0x18` (`0x1000`) and `0x1E` (`0x1B01`) are identical on 298 × 98 and
+298 × 130 firmware, so they are constants; copy them.
+
+`work/build-bigsplash.py` writes a new `eGON.BMP` at `0x100000` (`0xBC000`
+bytes, ending `0x1BC000`, clear of calibration) and patches those two SPL words.
+Seven bytes change in the SPL: the two operands and the BT0 checksum.
+
+- **Flash the bitmap first, the SPL last.** Until the SPL changes it still
+  points at `0x13000`, so an interruption leaves a bootable scope.
+- **Leave the old block at `0x13000` in place.** Reverting is then a two-word
+  SPL change, not a flash restore.
+- Rewriting the SPL is the only step here that can stop the scope booting from
+  SPI. Recovery is the FEL route above plus `spiflash-write 0 <backup SPL>`.
 
 ## Files
 
@@ -91,10 +194,17 @@ fnirsi_splash.py    info / extract / replace on a flash dump. Parses geometry
                     from the block header rather than hardcoding it.
 backup-scope.sh     Read-only. Double-reads the chip, compares, hashes, splits
                     out calibration, runs info + extract. Run this first.
-bench-guide.html    The bench procedure, published as an artifact.
+                    Needs sudo for the FEL `version` call as well as the reads.
+bench-guide.html    The bench procedure, published as an artifact. Its step 1
+                    still describes an external microSD; the 1014D has none.
 work/               Scratch: extracted splashes, patched images, comparisons.
+                    Git-ignored, which currently includes the two builders below.
+  build-sd-wipe.py    Payload that erases the FEL stub from the internal card.
+  build-bigsplash.py  Full-screen 800 × 480 bitmap + the two-word SPL patch.
 upstream/           Vendored copies of pecostm32's repos (see below).
-ossiloscope.jpg     Owner's artwork, git-ignored. Already exactly 298 × 98.
+ossiloscope.jpg     Owner's artwork, git-ignored. 298 × 98 — note that a v3.0
+                    scope's slot is 298 × 130, so it needs --stretch or a
+                    letterbox.
 ```
 
 Typical use:
@@ -106,9 +216,9 @@ python3 fnirsi_splash.py replace dump.bin logo.png -o patched.bin
 ```
 
 `replace` refuses to emit a file whose calibration region differs from the
-source, resizes and letterboxes onto black, and Floyd-Steinberg dithers by
-default — which matters, since flat truncation bands visibly on skin tones and
-gradients at 5/6/5.
+source, resizes and letterboxes onto black (or fills the slot exactly with
+`--stretch`), and Floyd-Steinberg dithers by default — which matters, since flat
+truncation bands visibly on skin tones and gradients at 5/6/5.
 
 ## Upstream
 
@@ -126,27 +236,35 @@ sandbox.
 
 ## Verified vs assumed
 
-Verified locally against real dumps:
+Verified **on the owner's scope**, 2026-09-04, end to end:
 
-- The layout and splash format above, on **both** a 1013D and a genuine 1014D
-  image. Extract-then-reinsert reproduces each source file **byte for byte** —
-  this round trip is the evidence the format is right.
-- Calibration is the only per-unit region.
-- The BT0 checksum algorithm.
+- SoC `0x1663` (F1C100s) and a Winbond `EFh`/`40h` **2,097,152-byte** flash,
+  reported by `spiflash-info` — the 2 MiB figure confirmed against the chip
+  rather than against a dump.
+- The layout and splash format, now on three images including this unit.
+  Extract-then-reinsert is byte-exact.
+- A 298 × 130 splash replaced, read back **byte-identical to the intended
+  image**, and rendered correctly on the panel.
+- A full-screen 800 × 480 splash at `0x100000` with a patched SPL, likewise
+  read back byte-identical and rendered correctly.
+- FEL entry via the internal card, and `sd-wipe.bin` to undo it.
+- The BT0 checksum algorithm, on the stock SPL, upstream's `fel-sdboot.sunxi`,
+  and a patched SPL that boots.
+- The scope runs **firmware v3.0** — printed in its own stock splash. CLAUDE.md
+  previously listed v3.0 as "not obtained"; this unit shipped with it.
 
-Not verified — nothing here has been run against hardware:
+Still not verified:
 
-- Whether the owner's specific unit matches the upstream 1014D dump. Running
-  `info` on their own dump is the gate before any write.
 - The A/B display panel variants. Official firmware ships as `-A-` and `-B-`
-  builds with a documented symptom of the image shifting left on the wrong one;
-  whether that reaches the splash block is unknown.
-- The `sunxi-fel spiflash-read` invocations are standard tool usage, not lifted
-  from upstream docs. The `spiflash-write` and FEL SD-boot commands are
-  upstream's.
-- Latest official firmware appears to be `v3.0`, 2021-10-06, shipped as
-  `FSI-1014.bin` on a USB stick. Not obtained — FNIRSI's download page builds
-  links in JavaScript, and third-party mirrors were deliberately avoided.
+  builds with a documented symptom of the image shifting left on the wrong one.
+  The splash rendered correctly here with no horizontal offset, on both
+  geometries — one unit, so evidence, not proof.
+- Why the v3.0 app will not start when loaded by upstream's bootloader. It is
+  loaded and jumped to; the screen stays black. Cache coherency was the obvious
+  suspect and NOPing the two cache enables did not change it.
+- The `.BMP` checksum field still matches no sum over any range tried, and is
+  left untouched. A patched bitmap with a stale field boots fine — now
+  confirmed on hardware, twice.
 
 ## Working notes
 

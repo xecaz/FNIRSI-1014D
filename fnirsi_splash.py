@@ -177,19 +177,26 @@ def cmd_extract(args):
     return 0
 
 
-def encode_rgb565(img, w, h, dither=True):
-    """Convert a PIL image to RGB565 little-endian bytes, resizing to fit
-    inside w*h while preserving aspect ratio, centred on black."""
+def encode_rgb565(img, w, h, dither=True, stretch=False):
+    """Convert a PIL image to RGB565 little-endian bytes, resizing to w*h.
+
+    By default the image is scaled to fit inside w*h with its aspect ratio
+    preserved and centred on black. With stretch=True it is scaled to fill
+    w*h exactly, which distorts the aspect ratio but leaves no black bars -
+    useful when the source is close to the target shape but not identical."""
     from PIL import Image
     src = img.convert("RGB")
     if src.size != (w, h):
-        sw, sh = src.size
-        scale = min(w / sw, h / sh)
-        new = (max(1, round(sw * scale)), max(1, round(sh * scale)))
-        src = src.resize(new, Image.LANCZOS)
-        canvas = Image.new("RGB", (w, h), (0, 0, 0))
-        canvas.paste(src, ((w - new[0]) // 2, (h - new[1]) // 2))
-        src = canvas
+        if stretch:
+            src = src.resize((w, h), Image.LANCZOS)
+        else:
+            sw, sh = src.size
+            scale = min(w / sw, h / sh)
+            new = (max(1, round(sw * scale)), max(1, round(sh * scale)))
+            src = src.resize(new, Image.LANCZOS)
+            canvas = Image.new("RGB", (w, h), (0, 0, 0))
+            canvas.paste(src, ((w - new[0]) // 2, (h - new[1]) // 2))
+            src = canvas
 
     out = bytearray(w * h * 2)
     if dither:
@@ -237,7 +244,8 @@ def cmd_replace(args):
             f"need exactly {w}x{h}\n")
         return 1
 
-    payload = encode_rgb565(img, w, h, dither=not args.no_dither)
+    payload = encode_rgb565(img, w, h, dither=not args.no_dither,
+                            stretch=args.stretch)
     assert len(payload) == b["pixel_bytes"]
 
     start = b["pixel_offset"]
@@ -292,6 +300,9 @@ def main():
     p.add_argument("-o", "--output", required=True)
     p.add_argument("--exact", action="store_true",
                    help="require the picture to already be the exact pixel size")
+    p.add_argument("--stretch", action="store_true",
+                   help="scale to fill the slot exactly, distorting the aspect "
+                        "ratio, instead of letterboxing onto black")
     p.add_argument("--no-dither", action="store_true",
                    help="plain truncation instead of Floyd-Steinberg")
     p.add_argument("--fix-checksum", action="store_true",
