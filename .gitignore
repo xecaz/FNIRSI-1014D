@@ -12,3 +12,7 @@ work/
 # to one physical scope; they should never be published.
 *.bin
 backup-*/
+
+# The owner's personal splash artwork and anything rendered from it.
+# The tooling works fine without it - supply your own image.
+ossiloscope.jpg

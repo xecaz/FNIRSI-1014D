@@ -5,7 +5,12 @@ destroying it. Some sellers rebadge this scope as **SiRyder**; searches should
 include that name and the closely related **1013D**, which shares most of its
 design.
 
-Not a git repository. No build step, no dependencies beyond Pillow + NumPy.
+Public repo at `github.com/xecaz/FNIRSI-1014D`. No build step, no dependencies
+beyond Pillow + NumPy.
+
+**The repo is public.** Nothing personal, and no flash dumps, go in it: dumps
+carry per-unit calibration, and the owner's splash artwork is their own. Both
+are covered by `.gitignore` — check it before adding files.
 
 ## Hardware
 
@@ -89,7 +94,7 @@ backup-scope.sh     Read-only. Double-reads the chip, compares, hashes, splits
 bench-guide.html    The bench procedure, published as an artifact.
 work/               Scratch: extracted splashes, patched images, comparisons.
 upstream/           Vendored copies of pecostm32's repos (see below).
-ossiloscope.jpg     The owner's artwork. Already exactly 298 × 98.
+ossiloscope.jpg     Owner's artwork, git-ignored. Already exactly 298 × 98.
 ```
 
 Typical use:
@@ -148,7 +153,8 @@ Not verified — nothing here has been run against hardware:
 - Say what is measured and what is inferred. This project has already had one
   wrong assumption (4 MiB) carried into a published document; the fix was
   checking against a real dump rather than reasoning harder.
-- The splash is a face photo of the owner. It shows on every power-on, so it is
-  more public than a wallpaper — worth a mention, not a lecture.
+- The owner's splash artwork is personal and is deliberately kept out of this
+  repo (see `.gitignore`). Whatever goes in the splash shows on every power-on,
+  so it is more public than a wallpaper — worth a mention, not a lecture.
 - `var()` does not work in SVG presentation attributes. In `bench-guide.html`
   every SVG fill and stroke comes from a CSS class for this reason.
