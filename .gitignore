@@ -1,0 +1,14 @@
+# Vendored third-party repos (pecostm32). ~300 MB, including a 244 MB tarball
+# that exceeds GitHub's 100 MB per-file limit. Re-fetch instead:
+#   curl -sSL -o upstream/<repo>.tar.gz \
+#     https://codeload.github.com/pecostm32/<repo>/tar.gz/refs/heads/main
+upstream/
+
+# Scratch: extracted splashes, patched firmware images, comparison renders.
+# Contains firmware derived from FNIRSI's originals - not ours to redistribute.
+work/
+
+# Flash dumps and backups. These carry per-unit calibration and are specific
+# to one physical scope; they should never be published.
+*.bin
+backup-*/

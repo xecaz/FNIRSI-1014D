@@ -1,0 +1,767 @@
+<title>FNIRSI 1014D Splash Swap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#F4F6F9;
+  --surface:#FFFFFF;
+  --surface-2:#E9EEF4;
+  --ink:#0F1720;
+  --ink-2:#44525F;
+  --ink-3:#6C7B8A;
+  --rule:#D3DBE4;
+  --rule-strong:#B4C0CD;
+  --accent:#0271AA;
+  --accent-bright:#00A1EE;
+  --accent-wash:#E2F1FA;
+  --danger:#B32229;
+  --danger-wash:#FBE9E9;
+  --caution:#8A5D00;
+  --caution-wash:#FBF1DC;
+  --ok:#14713F;
+  --ok-wash:#E2F3E9;
+  /* solid block fills for the flash map: dark enough for white labels in
+     BOTH themes, unlike --accent which flips dark->bright */
+  --block:#0B5E8A;
+  --block-soft:#35708F;
+  --shadow:0 1px 2px rgba(15,23,32,.06), 0 8px 24px -12px rgba(15,23,32,.18);
+
+  --sans:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cond:"IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0A1015;
+    --surface:#111A23;
+    --surface-2:#18242F;
+    --ink:#E4ECF3;
+    --ink-2:#A6B4C2;
+    --ink-3:#7A8A99;
+    --rule:#22303D;
+    --rule-strong:#33465A;
+    --accent:#4FC1FF;
+    --accent-bright:#00A1EE;
+    --accent-wash:#0D2735;
+    --danger:#FF7B7B;
+    --danger-wash:#2C1416;
+    --caution:#E6AE44;
+    --caution-wash:#2A2011;
+    --ok:#54D68F;
+    --ok-wash:#0F2A1D;
+    --block:#14547A;
+    --block-soft:#23536F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0A1015;
+  --surface:#111A23;
+  --surface-2:#18242F;
+  --ink:#E4ECF3;
+  --ink-2:#A6B4C2;
+  --ink-3:#7A8A99;
+  --rule:#22303D;
+  --rule-strong:#33465A;
+  --accent:#4FC1FF;
+  --accent-bright:#00A1EE;
+  --accent-wash:#0D2735;
+  --danger:#FF7B7B;
+  --danger-wash:#2C1416;
+  --caution:#E6AE44;
+  --caution-wash:#2A2011;
+  --ok:#54D68F;
+  --ok-wash:#0F2A1D;
+  --block:#14547A;
+  --block-soft:#23536F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---- layout: a centred reading column with a wider bleed track ---- */
+.wrap{
+  display:grid;
+  grid-template-columns:
+    [full-start] minmax(16px,1fr)
+    [bleed-start] minmax(0,320px)
+    [text-start] minmax(0,68ch) [text-end]
+    minmax(0,320px) [bleed-end]
+    minmax(16px,1fr) [full-end];
+  row-gap:0;
+}
+.wrap > *{grid-column:text}
+.wrap > .bleed{grid-column:bleed}
+.wrap > .full{grid-column:full}
+
+/* ---- masthead ---- */
+header.masthead{
+  grid-column:full;
+  border-bottom:1px solid var(--rule);
+  background:var(--surface);
+  padding:44px 16px 34px;
+}
+.masthead-inner{
+  max-width:1000px;margin:0 auto;
+  display:flex;flex-wrap:wrap;gap:28px;align-items:flex-end;justify-content:space-between;
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 10px;
+}
+h1{
+  font-family:var(--cond);font-weight:700;
+  font-size:clamp(34px,6vw,52px);line-height:1.02;letter-spacing:-.015em;
+  margin:0;text-wrap:balance;
+}
+.standfirst{
+  margin:14px 0 0;max-width:56ch;color:var(--ink-2);font-size:17px;
+}
+.idplate{
+  font-family:var(--mono);font-size:12px;line-height:1.9;
+  border:1px solid var(--rule);border-left:3px solid var(--accent-bright);
+  background:var(--ground);padding:12px 16px;color:var(--ink-2);
+  min-width:230px;
+}
+.idplate b{color:var(--ink);font-weight:500}
+
+/* ---- sections ---- */
+section{padding-top:52px}
+h2{
+  font-family:var(--cond);font-weight:700;
+  font-size:clamp(23px,3.2vw,30px);line-height:1.15;letter-spacing:-.01em;
+  margin:0 0 6px;text-wrap:balance;
+}
+h2 .num{
+  font-family:var(--mono);font-weight:500;font-size:.62em;
+  color:var(--accent);margin-right:.6em;letter-spacing:.02em;
+}
+h3{
+  font-family:var(--cond);font-weight:600;font-size:19px;letter-spacing:.005em;
+  margin:30px 0 4px;
+}
+p{margin:12px 0}
+a{color:var(--accent)}
+.lede{color:var(--ink-2);margin-top:0}
+ul,ol{margin:12px 0;padding-left:1.25em}
+li{margin:6px 0}
+code{
+  font-family:var(--mono);font-size:.88em;
+  background:var(--surface-2);border:1px solid var(--rule);
+  padding:.08em .36em;border-radius:3px;white-space:nowrap;
+}
+strong{font-weight:600}
+
+/* ---- code blocks ---- */
+.sh{
+  margin:16px 0;border:1px solid var(--rule);background:var(--surface);
+  border-radius:5px;overflow:hidden;box-shadow:var(--shadow);
+}
+.sh-head{
+  font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);padding:8px 14px;border-bottom:1px solid var(--rule);
+  background:var(--surface-2);
+}
+.sh pre{
+  margin:0;padding:14px;overflow-x:auto;
+  font-family:var(--mono);font-size:13.5px;line-height:1.65;color:var(--ink);
+}
+.sh .c{color:var(--ink-3)}
+.sh .p{color:var(--accent);user-select:none}
+
+/* ---- callouts ---- */
+.note{
+  margin:20px 0;padding:14px 18px;border-radius:4px;
+  border:1px solid var(--rule);border-left:3px solid var(--rule-strong);
+  background:var(--surface);
+}
+.note p{margin:8px 0}
+.note p:first-child{margin-top:0}
+.note p:last-child{margin-bottom:0}
+.note .tag{
+  display:block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:6px;color:var(--ink-3);
+}
+.note.stop{border-color:var(--danger);border-left-color:var(--danger);background:var(--danger-wash)}
+.note.stop .tag{color:var(--danger)}
+.note.warn{border-color:var(--rule);border-left-color:var(--caution);background:var(--caution-wash)}
+.note.warn .tag{color:var(--caution)}
+.note.good{border-color:var(--rule);border-left-color:var(--ok);background:var(--ok-wash)}
+.note.good .tag{color:var(--ok)}
+.note.unk{border-left-color:var(--accent);background:var(--accent-wash)}
+.note.unk .tag{color:var(--accent)}
+
+/* ---- figures ---- */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--rule);border-radius:5px;padding:20px 20px 14px;box-shadow:var(--shadow)}
+figure svg{display:block;width:100%;height:auto}
+
+/* SVG paint via CSS: var() is not honoured in presentation attributes,
+   so every fill/stroke below comes from a class instead. */
+figure svg text{font-family:var(--mono)}
+.s-ink{fill:var(--ink)}
+.s-ink2{fill:var(--ink-2)}
+.s-ink3{fill:var(--ink-3)}
+.s-acc{fill:var(--accent)}
+.s-accb{fill:var(--accent-bright)}
+.blk{fill:var(--block)}
+.blk-soft{fill:var(--block-soft)}
+.s-dan{fill:var(--danger)}
+.s-surf{fill:var(--surface)}
+.s-track{fill:var(--surface-2);stroke:var(--rule);stroke-width:1}
+.s-pad{fill:var(--rule-strong)}
+.ln{fill:none;stroke-width:1.5}
+.ln-rule{stroke:var(--rule-strong)}
+.ln-dan{stroke:var(--danger)}
+.ln-thin{fill:none;stroke:var(--rule-strong);stroke-width:1}
+.ln-cut{fill:none;stroke:var(--surface);stroke-width:2;stroke-dasharray:4 4}
+.cell{stroke:var(--surface);stroke-width:2}
+.cell-r{fill:#D6403F}
+.cell-g{fill:#2E9E5B}
+.cell-b{fill:#2E6FD6}
+.on-dark{fill:#FFFFFF}
+.on-bright{fill:#00232F}
+figcaption{
+  font-size:13px;color:var(--ink-3);margin-top:12px;
+  padding-top:10px;border-top:1px solid var(--rule);
+}
+.figtitle{
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 14px;
+}
+
+/* ---- table ---- */
+.tablewrap{overflow-x:auto;margin:20px 0;border:1px solid var(--rule);border-radius:5px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--rule)}
+thead th{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;background:var(--surface-2);
+}
+tbody tr:last-child td{border-bottom:none}
+td.m,th.m{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.danger td{background:var(--danger-wash)}
+tr.danger td.m:first-child{color:var(--danger);font-weight:500}
+tr.target td{background:var(--accent-wash)}
+tr.target td.m:first-child{color:var(--accent);font-weight:500}
+
+/* ---- checklist ---- */
+.check{list-style:none;padding:0;margin:18px 0;border:1px solid var(--rule);border-radius:5px;background:var(--surface);overflow:hidden}
+.check li{margin:0;border-bottom:1px solid var(--rule)}
+.check li:last-child{border-bottom:none}
+.check label{display:flex;gap:12px;align-items:flex-start;padding:11px 16px;cursor:pointer}
+.check label:hover{background:var(--surface-2)}
+.check input{margin:4px 0 0;accent-color:var(--accent);width:15px;height:15px;flex:none}
+.check input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.check .t{font-size:14.5px}
+.check input:checked + .t{color:var(--ink-3);text-decoration:line-through}
+
+/* ---- key/value strip ---- */
+.kv{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:5px;
+  overflow:hidden;margin:20px 0;
+}
+.kv > div{background:var(--surface);padding:13px 16px}
+.kv dt{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 4px;
+}
+.kv dd{margin:0;font-family:var(--mono);font-size:15px;font-weight:500;color:var(--ink)}
+.kv dd small{display:block;font-family:var(--sans);font-size:12px;font-weight:400;color:var(--ink-3);margin-top:3px;letter-spacing:0}
+
+footer{
+  grid-column:full;margin-top:64px;border-top:1px solid var(--rule);
+  background:var(--surface);padding:26px 16px 44px;
+}
+.footer-inner{max-width:1000px;margin:0 auto;font-size:13px;color:var(--ink-3)}
+.footer-inner a{color:var(--accent)}
+hr.rule{border:none;border-top:1px solid var(--rule);margin:44px 0 0}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:720px){
+  .masthead-inner{align-items:flex-start}
+  section{padding-top:40px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <p class="eyebrow">Bench procedure · Allwinner F1C100s · 2 MiB SPI NOR</p>
+      <h1>FNIRSI 1014D<br>Splash Swap</h1>
+      <p class="standfirst">Replacing the boot logo in SPI flash without losing the one thing on this
+      scope that cannot be replaced.</p>
+    </div>
+    <div class="idplate">
+      SoC &nbsp;<b>Allwinner F1C100s</b><br>
+      FPGA&nbsp;<b>Anlogic EF2L45LG144</b><br>
+      Flash&nbsp;<b>2 MiB SPI NOR · W25Q16 class</b><br>
+      Splash&nbsp;<b>eGON.BMP @ 0x13000 · 298 × 98</b><br>
+      Format&nbsp;<b>RGB565 LE, uncompressed</b>
+    </div>
+  </div>
+</header>
+
+<section id="stakes">
+  <h2><span class="num">00</span>The one irreversible thing</h2>
+  <p class="lede">Read this before you plug anything in.</p>
+
+  <div class="note stop">
+    <span class="tag">Stop — unrecoverable</span>
+    <p>Your scope's per-unit calibration and configuration lives at flash offset
+    <code>0x1FD000</code>. It is written at the factory against <em>your</em> analog front end.
+    There is no download for it and no way to regenerate it at home.</p>
+    <p>This was verified, not assumed: two genuine 4 MiB dumps from different scopes are
+    byte-identical across the entire chip <em>except</em> two 4 KiB pages, both inside that
+    region. Somebody else's dump is not a spare copy of yours.</p>
+  </div>
+
+  <p>Everything else on the chip is recoverable, because everything else is the same on every
+  unit. So the whole procedure below reduces to one rule: <strong>get a verified full-chip
+  backup before the first write</strong>, and the worst case stops being a brick and starts
+  being an inconvenience.</p>
+</section>
+
+<section id="map">
+  <h2><span class="num">01</span>What's on the chip</h2>
+  <p class="lede">Four Allwinner eGON blocks near the start, calibration near the end, and a
+  surprising amount of nothing in between.</p>
+
+  <figure class="bleed">
+    <p class="figtitle">Fig. 1 — the 1014D's 2 MiB address space, drawn to scale</p>
+    <svg viewBox="0 0 1000 300" role="img" aria-label="Map of the 1014D's 2 MiB flash showing four eGON blocks in the first 0.9 MiB, roughly 1.1 MiB of free space, and the calibration region in the last few kilobytes of the chip.">
+      <!-- ===== upper strip: full 2 MiB ===== -->
+      <text class="s-ink3" x="0" y="16" font-size="12" letter-spacing="1.4">FULL CHIP · 2 MiB</text>
+
+      <!-- base track -->
+      <rect class="s-track" x="0" y="34" width="1000" height="34"/>
+
+      <!-- blocks (min 4px so the small ones stay visible) -->
+      <rect class="blk"      x="0"     y="34" width="6.4"   height="34"/>
+      <rect class="blk"      x="11.7"  y="34" width="22.7"  height="34"/>
+      <rect class="s-accb"   x="37.1"  y="34" width="28.1"  height="34"/>
+      <rect class="blk-soft" x="76.2"  y="34" width="367.7" height="34"/>
+      <rect class="s-dan"    x="994.1" y="34" width="5.9"   height="34"/>
+
+      <!-- labels for the big two -->
+      <text class="on-dark" x="260" y="56" text-anchor="middle" font-size="12">2nd executable — scope app · 753 KiB</text>
+      <text class="s-ink3"  x="715" y="56" text-anchor="middle" font-size="12">free space · 1.10 MiB unused</text>
+
+      <!-- leader to calibration, which now sits at the very end of the chip -->
+      <path class="ln ln-dan" d="M997 34 L997 22"/>
+      <text class="s-dan" x="991" y="20" font-size="12" text-anchor="end">0x1FD000 · calibration — do not write</text>
+
+      <!-- bracket showing the zoom range -->
+      <path class="ln-thin" d="M0 74 L0 84 L125 84 L125 74"/>
+      <path class="ln-thin" d="M62 84 L62 96" stroke-dasharray="3 3"/>
+      <text class="s-ink3" x="133" y="89" font-size="11">first 256 KiB, enlarged below</text>
+
+      <!-- ===== lower strip: first 256 KiB ===== -->
+      <text class="s-ink3" x="0" y="128" font-size="12" letter-spacing="1.4">DETAIL · FIRST 256 KiB</text>
+
+      <rect class="s-track" x="0" y="146" width="1000" height="52"/>
+
+      <!-- SPL -->
+      <rect class="blk" x="0" y="146" width="50.8" height="52"/>
+      <!-- 1st exec -->
+      <rect class="blk" x="93.8" y="146" width="181.6" height="52"/>
+      <!-- bitmap : the target -->
+      <rect class="s-accb" x="296.9" y="146" width="224.6" height="52"/>
+      <!-- 2nd exec runs off the right edge -->
+      <rect class="blk-soft"  x="609.4" y="146" width="390.6" height="52"/>
+      <path class="ln-cut" d="M990 146 L1000 146 L1000 198 L990 198"/>
+
+      <!-- in-block labels -->
+      <text class="on-bright" x="409" y="169" text-anchor="middle" font-size="13" font-weight="600">eGON.BMP</text>
+      <text class="on-bright" x="409" y="186" text-anchor="middle" font-size="12">the splash · 0xE600</text>
+      <text class="on-dark"   x="184" y="177" text-anchor="middle" font-size="12">eGON.EXE</text>
+      <text class="on-dark"   x="800" y="177" text-anchor="middle" font-size="12">eGON.EXE — scope app →</text>
+
+      <!-- callout for SPL, too narrow for inside text -->
+      <path class="ln ln-rule" d="M25 146 L25 134"/>
+      <text class="s-ink2" x="30" y="131" font-size="12">eGON.BT0 — SPL, draws the splash</text>
+
+      <!-- axis -->
+      <g font-size="11">
+        <path class="ln-thin" d="M0 198 L0 208 M296.9 198 L296.9 208 M521.5 198 L521.5 208 M609.4 198 L609.4 208 M999 198 L999 208"/>
+        <text class="s-ink3" x="0"     y="222">0x000000</text>
+        <text class="s-acc"  x="296.9" y="222" text-anchor="middle">0x013000</text>
+        <text class="s-acc"  x="521.5" y="222" text-anchor="middle">0x021600</text>
+        <text class="s-ink3" x="609.4" y="222" text-anchor="middle">0x027000</text>
+        <text class="s-ink3" x="999"   y="222" text-anchor="end">0x040000</text>
+      </g>
+      <text class="s-acc" x="409" y="243" text-anchor="middle" font-size="11.5">↑ the 58,880 bytes you are going to rewrite</text>
+
+      <!-- pixel-payload breakdown bar -->
+      <text class="s-ink3" x="0" y="272" font-size="11" letter-spacing="1.2">INSIDE THE BLOCK</text>
+      <rect class="s-dan"  x="150"   y="261" width="1.9"   height="16"/>
+      <rect class="s-accb" x="151.9" y="261" width="825.6" height="16"/>
+      <rect class="s-pad"  x="977.5" y="261" width="22.5"  height="16"/>
+      <text class="on-bright" x="160" y="273" font-size="11">40 B header · 58,408 B pixels (298 × 98 × 2) · 432 B zero pad</text>
+    </svg>
+    <figcaption>Positions and widths are true to scale; the two narrowest blocks are drawn at
+    a minimum width so they remain visible. Note where the calibration sits on this chip: the very
+    last few kilobytes, not the middle. Roughly 1.1 MiB between the scope app and calibration is
+    unused.</figcaption>
+  </figure>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th class="m">Offset</th><th class="m">Size</th><th>Magic</th><th>Contents</th><th>Checksum field</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="m">0x000000</td><td class="m">0x3400</td><td class="m">eGON.BT0</td><td>SPL — loads the splash, starts the app</td><td>0xD9BA570B valid</td></tr>
+        <tr><td class="m">0x006000</td><td class="m">0xBA00</td><td class="m">eGON.EXE</td><td>1st executable — FEL helper</td><td>0x00000000</td></tr>
+        <tr class="target"><td class="m">0x013000</td><td class="m">0xE600</td><td class="m">eGON.BMP</td><td><strong>Boot splash — the target</strong></td><td>0x03098A00, not a sum</td></tr>
+        <tr><td class="m">0x027000</td><td class="m">0xBC400</td><td class="m">eGON.EXE</td><td>2nd executable — main scope app</td><td>0x00000000</td></tr>
+        <tr class="danger"><td class="m">0x1FD000</td><td class="m">~0x1F4</td><td class="m">—</td><td>Per-unit calibration / config</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>On checksums</h3>
+  <p>The <code>eGON.BT0</code> field is a real, standard sunxi checksum — sum of 32-bit words
+  with the field itself replaced by the stamp <code>0x5F0A6C39</code> — and it verifies correctly
+  against genuine dumps. But the two <code>.EXE</code> blocks store <code>0x00000000</code>, and a
+  known-working patched image published upstream carries a <em>stale</em> BT0 checksum. So the
+  boot ROM is not enforcing it on the SPI path.</p>
+  <p>The splash block's field, <code>0x776F9CC9</code>, matches no sum over any range I tried, and
+  is byte-identical across every dump and every patched image. Treat it as a constant and leave it
+  alone — which is what the tool does by default.</p>
+</section>
+
+<section id="format">
+  <h2><span class="num">02</span>The splash format</h2>
+  <p class="lede">No compression, no palette, no encryption. Raw framebuffer bytes.</p>
+
+  <dl class="kv">
+    <div><dt>Geometry</dt><dd>298 × 98<small>confirmed on a real 1014D dump</small></dd></div>
+    <div><dt>Encoding</dt><dd>RGB565 LE<small>top-down, no stride padding</small></dd></div>
+    <div><dt>Pixel offset</dt><dd>0x13028<small>40 bytes into the block</small></dd></div>
+    <div><dt>Payload</dt><dd>58,408 B<small>then 432 B of zeroes</small></dd></div>
+  </dl>
+
+  <figure>
+    <p class="figtitle">Fig. 2 — one pixel, as stored</p>
+    <svg viewBox="0 0 1000 168" role="img" aria-label="Bit layout of one RGB565 pixel across two bytes, showing red in the top five bits, green split across the byte boundary, and blue in the low five bits, with byte 0 stored first.">
+      <g font-size="12">
+        <!-- 16 cells of 55px from x=60, drawn bit 15 down to bit 0 -->
+        <g class="cell cell-r">
+          <rect x="60"  y="46" width="55" height="46"/>
+          <rect x="115" y="46" width="55" height="46"/>
+          <rect x="170" y="46" width="55" height="46"/>
+          <rect x="225" y="46" width="55" height="46"/>
+          <rect x="280" y="46" width="55" height="46"/>
+        </g>
+        <g class="cell cell-g">
+          <rect x="335" y="46" width="55" height="46"/>
+          <rect x="390" y="46" width="55" height="46"/>
+          <rect x="445" y="46" width="55" height="46"/>
+          <rect x="500" y="46" width="55" height="46"/>
+          <rect x="555" y="46" width="55" height="46"/>
+          <rect x="610" y="46" width="55" height="46"/>
+        </g>
+        <g class="cell cell-b">
+          <rect x="665" y="46" width="55" height="46"/>
+          <rect x="720" y="46" width="55" height="46"/>
+          <rect x="775" y="46" width="55" height="46"/>
+          <rect x="830" y="46" width="55" height="46"/>
+          <rect x="885" y="46" width="55" height="46"/>
+        </g>
+
+        <!-- channel labels inside -->
+        <text class="on-dark" x="197" y="75" text-anchor="middle" font-size="13" font-weight="600">R · 5 bits</text>
+        <text class="on-dark" x="472" y="75" text-anchor="middle" font-size="13" font-weight="600">G · 6 bits</text>
+        <text class="on-dark" x="802" y="75" text-anchor="middle" font-size="13" font-weight="600">B · 5 bits</text>
+
+        <!-- bit numbers -->
+        <g class="s-ink3" font-size="10.5" text-anchor="middle">
+          <text x="87"  y="40">15</text><text x="307" y="40">11</text>
+          <text x="362" y="40">10</text><text x="637" y="40">5</text>
+          <text x="692" y="40">4</text><text x="912" y="40">0</text>
+        </g>
+
+        <!-- byte brackets -->
+        <path class="ln ln-rule" d="M60 100 L60 112 L610 112 L610 100"/>
+        <path class="ln ln-rule" d="M615 100 L615 112 L940 112 L940 100"/>
+        <text class="s-ink2" x="335" y="130" text-anchor="middle">bits 15–8  =  byte 1</text>
+        <text class="s-ink2" x="777" y="130" text-anchor="middle">bits 7–0  =  byte 0</text>
+
+        <!-- storage order -->
+        <text class="s-acc" x="60" y="156" font-size="12.5">Stored little-endian: byte 0 first, then byte 1. Green straddles the byte boundary — this is the part people get wrong.</text>
+
+        <!-- figure label -->
+        <text class="s-ink3" x="0" y="22" font-size="11" letter-spacing="1.3">ONE PIXEL · 16 BITS</text>
+      </g>
+    </svg>
+    <figcaption>Value is <code>(R &lt;&lt; 11) | (G &lt;&lt; 5) | B</code>, written low byte first.
+    A whole 298 × 98 image is just 58,408 of these laid out row by row from the top left.</figcaption>
+  </figure>
+
+  <div class="note good">
+    <span class="tag">Verified</span>
+    <p>Extracting the splash to PNG and re-encoding it back into the image reproduces the
+    original 4 MiB file <strong>byte for byte</strong>. That round trip is what proves the format
+    above is right rather than merely plausible.</p>
+  </div>
+</section>
+
+<section id="kit">
+  <h2><span class="num">03</span>What you need</h2>
+  <ul>
+    <li>A microSD card — any size; only the first few KiB get used.</li>
+    <li><code>sunxi-fel</code> <strong>built with SPI flash support</strong>. The stock package
+    build often lacks it. A prebuilt copy ships in the upstream repo under
+    <code>Binaries/Hacked files/sunxi_stuff/</code>.</li>
+    <li><code>fel-sdboot.sunxi</code>, from the same directory.</li>
+    <li>A USB cable to the scope, and <code>fnirsi_splash.py</code> from this project.</li>
+  </ul>
+  <p>You do <em>not</em> need to open the scope, and you do not need a SOIC clip. FEL mode reaches
+  the SPI flash over USB.</p>
+</section>
+
+<section id="procedure">
+  <h2><span class="num">04</span>The procedure</h2>
+  <p class="lede">Ordered by risk: everything that protects you happens before anything that
+  changes the scope.</p>
+
+  <h3>Step 1 — Get into FEL mode</h3>
+  <p>Write the FEL boot stub to the SD card, put it in the scope, power on. The stub hands control
+  straight to USB recovery.</p>
+  <div class="sh">
+    <div class="sh-head">Check the device node first — this writes to a raw disk</div>
+<pre><span class="c"># confirm which node is your SD card, and that it is NOT your system disk</span>
+<span class="p">$</span> lsblk -o NAME,SIZE,TRAN,MODEL
+
+<span class="p">$</span> sudo dd if=fel-sdboot.sunxi of=/dev/sdX bs=1024 seek=8 conv=fsync
+
+<span class="c"># insert the card, power the scope on, then confirm it enumerated:</span>
+<span class="p">$</span> lsusb | grep 1f3a:efe8
+Bus 001 Device 026: ID 1f3a:efe8 Onda (unverified) V972 tablet in flashing mode</pre>
+  </div>
+  <div class="note warn">
+    <span class="tag">Check twice</span>
+    <p><code>/dev/sdX</code> is a placeholder. Writing this to the wrong node destroys the
+    partition table of whatever it hits. Confirm the size and model match your SD card before
+    pressing enter.</p>
+  </div>
+
+  <h3>Step 2 — Back up the whole chip, twice</h3>
+  <p>Two independent reads compared against each other. If they differ, the read is unreliable and
+  you must not proceed — a corrupt backup is worse than no backup, because you will trust it.</p>
+  <div class="sh">
+    <div class="sh-head">Do not skip the compare</div>
+<pre><span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 backup-1.bin
+<span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 backup-2.bin
+
+<span class="p">$</span> cmp backup-1.bin backup-2.bin &amp;&amp; echo "reads agree"
+<span class="p">$</span> sha256sum backup-1.bin | tee backup.sha256
+
+<span class="c"># pull the calibration region out on its own, and put it somewhere safe</span>
+<span class="p">$</span> dd if=backup-1.bin of=calibration-0x1FD000.bin bs=4096 skip=509 count=2</pre>
+  </div>
+  <p>Copy <code>backup-1.bin</code> off this machine — another drive, another host, anywhere that
+  is not the laptop you are about to run flashing commands on.</p>
+
+  <h3>Step 3 — Confirm your scope's actual geometry</h3>
+  <p>This is the step that makes the rest safe on a 1014D rather than a 1013D.</p>
+  <div class="sh">
+    <div class="sh-head">Read your own dump, don't assume mine</div>
+<pre><span class="p">$</span> python3 fnirsi_splash.py info backup-1.bin
+<span class="p">$</span> python3 fnirsi_splash.py extract backup-1.bin -o stock.png -s 2</pre>
+  </div>
+  <p>Look at <code>stock.png</code>. If it is your scope's real boot logo and <code>info</code>
+  reports a sane width and height, the layout holds on your unit and you can continue. If the
+  magic is missing or the image is garbage, stop and re-examine — do not write.</p>
+
+  <h3>Step 4 — Make the new splash</h3>
+  <p>Author at exactly the size <code>info</code> reported. The tool will resize and letterbox
+  anything else onto black, but you get a sharper result by matching it yourself. Bear in mind the
+  destination is 16-bit colour: flat brand colours and clean type survive well, subtle gradients
+  band unless dithered, which the tool does by default.</p>
+  <div class="sh">
+    <div class="sh-head">Build the patched image — never in place</div>
+<pre><span class="p">$</span> python3 fnirsi_splash.py replace backup-1.bin mylogo.png -o patched.bin
+
+checksum field left at 0x776F9CC9 (unchanged)
+wrote patched.bin
+changed 4K pages: 15 -&gt; ['0x13000', ... , '0x21000']
+calibration region at 0x1FD000: untouched
+
+<span class="c"># read it back out of the patched file and look before you commit it</span>
+<span class="p">$</span> python3 fnirsi_splash.py extract patched.bin -o preview.png -s 2</pre>
+  </div>
+  <p>The tool refuses to emit a file whose calibration region differs from the source, so a
+  successful write here is itself a check. Confirm the changed-page list contains only pages in
+  <code>0x13000</code>–<code>0x21000</code>.</p>
+
+  <h3>Step 5 — Write it</h3>
+  <div class="sh">
+    <div class="sh-head">The only destructive command in this guide</div>
+<pre><span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0 patched.bin
+
+<span class="c"># verify the chip now matches what you intended, before power-cycling</span>
+<span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 verify.bin
+<span class="p">$</span> cmp verify.bin patched.bin &amp;&amp; echo "flash matches"</pre>
+  </div>
+  <p>Then remove the SD card and power-cycle. You should get your own logo where FNIRSI's used to
+  be, followed by a completely normal boot into the scope application.</p>
+</section>
+
+<section id="checklist">
+  <h2><span class="num">05</span>Bench checklist</h2>
+  <p class="lede">Tick as you go. Saved in this browser, so it survives a reload mid-job.</p>
+  <ul class="check" id="cl">
+    <li><label><input type="checkbox" data-k="c1"><span class="t">SD card node confirmed against <code>lsblk</code> — not the system disk</span></label></li>
+    <li><label><input type="checkbox" data-k="c2"><span class="t">Scope enumerates as <code>1f3a:efe8</code> in FEL mode</span></label></li>
+    <li><label><input type="checkbox" data-k="c3"><span class="t">Two full reads taken and <code>cmp</code> says they agree</span></label></li>
+    <li><label><input type="checkbox" data-k="c4"><span class="t">SHA-256 recorded, backup copied <em>off</em> this machine</span></label></li>
+    <li><label><input type="checkbox" data-k="c5"><span class="t">Calibration region extracted to its own file</span></label></li>
+    <li><label><input type="checkbox" data-k="c6"><span class="t"><code>info</code> reports valid eGON.BMP geometry on <em>my</em> dump</span></label></li>
+    <li><label><input type="checkbox" data-k="c7"><span class="t">Extracted stock splash looks like my scope's real logo</span></label></li>
+    <li><label><input type="checkbox" data-k="c8"><span class="t">Patched image changes only pages 0x13000–0x21000</span></label></li>
+    <li><label><input type="checkbox" data-k="c9"><span class="t">Preview extracted from the patched file looks right</span></label></li>
+    <li><label><input type="checkbox" data-k="c10"><span class="t">Post-write read-back matches the patched image</span></label></li>
+  </ul>
+</section>
+
+<section id="recovery">
+  <h2><span class="num">06</span>If it goes wrong</h2>
+
+  <h3>Blank screen, but FEL still works</h3>
+  <p>This is the ordinary failure and it is not serious. The SPL or splash block is unhappy;
+  the boot ROM still answers over USB. Put the FEL card back in, power on, and restore:</p>
+  <div class="sh">
+    <div class="sh-head">Full restore from backup</div>
+<pre><span class="p">$</span> sudo ./sunxi-fel -p spiflash-write 0 backup-1.bin
+<span class="p">$</span> sudo ./sunxi-fel spiflash-read 0 0x200000 check.bin
+<span class="p">$</span> cmp check.bin backup-1.bin &amp;&amp; echo "restored"</pre>
+  </div>
+
+  <h3>Nothing enumerates at all</h3>
+  <p>The F1C100s boot ROM enters FEL when it cannot find valid boot media, and the SD card is
+  checked before SPI flash — which is exactly why the FEL card is your way back in. If USB is
+  silent even with the card inserted, suspect the cable, the port, or power before suspecting the
+  flash.</p>
+
+  <h3>Scope boots but is out of calibration</h3>
+  <p>If measurements are visibly wrong after a write, restore <code>backup-1.bin</code> in full.
+  If you no longer have it, this is the outcome the whole guide exists to prevent, and there is no
+  clean fix — the values were specific to your hardware.</p>
+</section>
+
+<section id="alt">
+  <h2><span class="num">07</span>The other route, and what it actually does</h2>
+  <p>The scope exposes its internal storage as USB mass storage, and writing a boot image to that
+  device at an 8 KiB offset makes the scope boot from it instead of SPI flash — reversible by
+  zeroing a single block:</p>
+  <div class="sh">
+    <div class="sh-head">Alternative firmware from SD — not a splash edit</div>
+<pre><span class="p">$</span> sudo umount /dev/sdX1
+<span class="p">$</span> sudo dd if=fnirsi_1013d.bin of=/dev/sdX bs=1024 seek=8
+
+<span class="c"># and to undo it completely:</span>
+<span class="p">$</span> sudo dd if=/dev/zero of=/dev/sdX bs=1024 seek=8 count=1</pre>
+  </div>
+  <div class="note unk">
+    <span class="tag">Worth being precise about</span>
+    <p>This is genuinely the lowest-risk way to <em>run different firmware</em>, because it never
+    writes to SPI flash at all. But it is not a way to change the stock splash: it replaces the
+    entire boot chain with pecostm32's open firmware, which draws its own logo from its own source.
+    Changing that means rebuilding that project, not patching a bitmap.</p>
+    <p>If your goal is your own logo in front of the <em>stock</em> scope application, Section 04
+    is the route. If you would rather run open firmware anyway, this is the safer starting point
+    and the splash question moves into its source tree.</p>
+  </div>
+</section>
+
+<section id="open">
+  <h2><span class="num">08</span>What is confirmed, and what isn't</h2>
+  <p class="lede">Updated after a genuine 1014D flash dump turned up — the earlier version of this
+  guide was written from 1013D dumps and had the chip size wrong.</p>
+
+  <div class="note good">
+    <span class="tag">Confirmed on a real 1014D</span>
+    <p>A full 1014D flash backup exists upstream, under
+    <code>Test code/1014D_Emulator/</code>. Against it: the splash sits at the same
+    <code>0x13000</code>, the same <code>0xE600</code> block, and the same
+    <strong>298 × 98</strong> geometry as the 1013D. Extract-then-reinsert reproduces that
+    2 MiB image byte for byte, so the format holds on this model, not just by inference from
+    the 1013D.</p>
+  </div>
+
+  <div class="note warn">
+    <span class="tag">Different from the 1013D</span>
+    <p>The 1014D uses a <strong>2 MiB</strong> chip, not the 4 MiB part on later 1013D units, and
+    both executable blocks are different sizes (<code>0xBA00</code> and <code>0xBC400</code>
+    against <code>0x7A00</code> and <code>0x193A00</code>). The consequence for you is the read
+    length: <code>0x200000</code>, not <code>0x400000</code>. It also moves calibration from the
+    middle of the chip to the last few kilobytes.</p>
+  </div>
+
+  <h3>Still open</h3>
+  <ul>
+    <li><strong>Whether your unit matches this dump.</strong> One 1014D backup is one data point.
+    Step 3 is still the gate — run <code>info</code> on your own dump and confirm the geometry
+    before writing anything.</li>
+    <li><strong>The A/B display variants.</strong> Official firmware ships as <code>-A-</code> and
+    <code>-B-</code> builds for different panels, with a documented symptom of the image shifting
+    left on the wrong one. Whether that reaches the splash block is unknown.</li>
+    <li><strong>The stock update file was not obtained.</strong> Latest official appears to be
+    <code>v3.0</code> dated 2021-10-06, shipped as <code>FSI-1014.bin</code> on a USB stick.
+    FNIRSI's download page builds its links in JavaScript and could not be scraped; third-party
+    mirrors were deliberately not used. The upstream dump made this non-blocking.</li>
+    <li><strong>Whether the SPL validates the splash block.</strong> Still untested. The two
+    dumps carry <em>different</em> values in that header field — <code>0x776F9CC9</code> and
+    <code>0x03098A00</code> — so it is not a shared constant, but neither is a sum over any range
+    tried, and patched images that work in the field leave it stale.</li>
+  </ul>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <p>Built from analysis of the public dumps in
+    <a href="https://github.com/pecostm32/FNIRSI-1013D-1014D-Hack">pecostm32/FNIRSI-1013D-1014D-Hack</a>
+    and <a href="https://github.com/pecostm32/FNIRSI_1014D_Firmware">pecostm32/FNIRSI_1014D_Firmware</a>,
+    whose reverse engineering everything here rests on. Hardware identification from the
+    <a href="https://circuitdigest.com/articles/fnirsi-1014d-oscilloscope-teardown">CircuitDigest teardown</a>
+    and <a href="https://www.cnx-software.com/2022/11/16/fnirsi-1013d-teardown-and-mini-review-a-portable-oscilloscope-based-on-allwinner-cpu-anlogic-fgpa/">CNX Software</a>.</p>
+    <p>Flash offsets, the RGB565 layout and the checksum findings were re-derived and verified
+    locally against the 4 MiB dumps rather than taken on trust. The lossless round trip is the
+    evidence. Everything in Section 08 is not yet evidence of anything.</p>
+  </div>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var box = document.getElementById('cl');
+  if(!box) return;
+  var inputs = box.querySelectorAll('input[type=checkbox]');
+  var KEY = 'fnirsi1014d.bench.v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch(e) { state = {}; }
+  inputs.forEach(function(el){
+    if(state[el.dataset.k]) el.checked = true;
+    el.addEventListener('change', function(){
+      state[el.dataset.k] = el.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {}
+    });
+  });
+})();
+</script>
