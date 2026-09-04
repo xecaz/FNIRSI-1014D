@@ -182,8 +182,16 @@ Seven bytes change in the SPL: the two operands and the BT0 checksum.
 
 - **Flash the bitmap first, the SPL last.** Until the SPL changes it still
   points at `0x13000`, so an interruption leaves a bootable scope.
-- **Leave the old block at `0x13000` in place.** Reverting is then a two-word
-  SPL change, not a flash restore.
+- **Leave the old block at `0x13000` in place — this is not optional.** The SPL
+  is not the only consumer of the splash. The **scope app draws it again on
+  power-down**, and its reference still points at `0x13000`. Observed on
+  hardware: after relocating the boot splash to `0x100000`, power-off still
+  showed the old 298 × 130 image. Overwrite `0x13000` and you corrupt the
+  shutdown screen. It also keeps a revert down to two SPL words.
+- Consequence: a v3.0 scope patched this way shows **the large splash at boot
+  and the small one at shutdown**. Matching them would mean finding and patching
+  the app's own reference inside the `0xBCE00` block at `0x27000` — not
+  attempted, and there is no source for v3.0.
 - Rewriting the SPL is the only step here that can stop the scope booting from
   SPI. Recovery is the FEL route above plus `spiflash-write 0 <backup SPL>`.
 
